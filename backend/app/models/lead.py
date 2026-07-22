@@ -14,6 +14,7 @@ class Lead(Base):
     mobile: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     alt_mobile: Mapped[str | None] = mapped_column(String(20))
     email: Mapped[str | None] = mapped_column(String(150))
+    lead_type: Mapped[str] = mapped_column(String(20), default="course")
     interested_course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"))
     source: Mapped[str] = mapped_column(String(30), default="other")
     assigned_telecaller_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))

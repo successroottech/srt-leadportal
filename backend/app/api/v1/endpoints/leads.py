@@ -24,6 +24,7 @@ router = APIRouter()
 
 MANAGE_ROLES = ("admin", "hr")
 ALL_LEAD_ROLES = ("admin", "hr", "telecaller")
+LEAD_TYPES = ("course", "job", "internal_staff")
 
 
 def _role_name(db: Session, user: User) -> str:
@@ -45,6 +46,7 @@ def _check_duplicate(db: Session, mobile: str, email: str | None, exclude_id: in
 def list_leads(
     status: str | None = None,
     source: str | None = None,
+    lead_type: str | None = None,
     telecaller_id: int | None = None,
     course_id: int | None = None,
     search: str | None = None,
@@ -61,6 +63,8 @@ def list_leads(
         q = q.filter(Lead.status == status)
     if source:
         q = q.filter(Lead.source == source)
+    if lead_type:
+        q = q.filter(Lead.lead_type == lead_type)
     if course_id:
         q = q.filter(Lead.interested_course_id == course_id)
     if search:
@@ -86,6 +90,9 @@ def duplicate_check(mobile: str | None = None, email: str | None = None, db: Ses
 
 @router.post("", response_model=LeadOut)
 def create_lead(payload: LeadCreate, db: Session = Depends(get_db), user: User = Depends(require_roles(*ALL_LEAD_ROLES))):
+    if payload.lead_type not in LEAD_TYPES:
+        raise HTTPException(status_code=422, detail=f"lead_type must be one of {LEAD_TYPES}")
+
     existing = _check_duplicate(db, payload.mobile, payload.email)
     if existing:
         raise HTTPException(status_code=409, detail={"message": "Duplicate lead", "existing_lead_id": existing.id})
@@ -97,7 +104,9 @@ def create_lead(payload: LeadCreate, db: Session = Depends(get_db), user: User =
 
     lead = Lead(
         name=payload.name, mobile=payload.mobile, alt_mobile=payload.alt_mobile, email=payload.email,
-        interested_course_id=payload.interested_course_id, source=payload.source,
+        lead_type=payload.lead_type,
+        interested_course_id=payload.interested_course_id if payload.lead_type == "course" else None,
+        source=payload.source,
         assigned_telecaller_id=assigned, status="assigned" if assigned else "new",
         follow_up_date=payload.follow_up_date, follow_up_time=payload.follow_up_time,
         remarks=payload.remarks, created_by=user.id,
@@ -130,6 +139,8 @@ def update_lead(lead_id: int, payload: LeadUpdate, db: Session = Depends(get_db)
     role_name = _role_name(db, current_user)
     if role_name == "telecaller" and lead.assigned_telecaller_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only edit your own leads")
+    if payload.lead_type is not None and payload.lead_type not in LEAD_TYPES:
+        raise HTTPException(status_code=422, detail=f"lead_type must be one of {LEAD_TYPES}")
 
     changes = payload.model_dump(exclude_unset=True)
     for field, value in changes.items():
@@ -216,6 +227,8 @@ def convert_lead(lead_id: int, payload: ConvertLeadRequest, db: Session = Depend
         raise HTTPException(status_code=404, detail="Lead not found")
     if lead.converted_student_id:
         raise HTTPException(status_code=400, detail="Lead already converted")
+    if lead.lead_type != "course":
+        raise HTTPException(status_code=400, detail="Only course leads can be converted to a student")
 
     student = Student(
         student_code=next_code(db, Student, Student.student_code, "SRT-STU-"),

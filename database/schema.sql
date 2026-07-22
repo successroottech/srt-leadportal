@@ -319,6 +319,8 @@ CREATE TABLE IF NOT EXISTS leads (
     mobile                  VARCHAR(20) NOT NULL,
     alt_mobile              VARCHAR(20),
     email                   VARCHAR(150),
+    lead_type               VARCHAR(20) NOT NULL DEFAULT 'course' CHECK (lead_type IN
+        ('course','job','internal_staff')),
     interested_course_id    INTEGER REFERENCES courses(id),
     source                  VARCHAR(30) NOT NULL DEFAULT 'other' CHECK (source IN
         ('website','google_ads','facebook','instagram','linkedin','whatsapp','walk_in','reference','justdial','indiamart','other')),
@@ -340,6 +342,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_email ON leads(email) WHERE email IS 
 CREATE INDEX IF NOT EXISTS idx_leads_telecaller ON leads(assigned_telecaller_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_followup ON leads(follow_up_date);
+CREATE INDEX IF NOT EXISTS idx_leads_type ON leads(lead_type);
 DROP TRIGGER IF EXISTS trg_leads_updated ON leads;
 CREATE TRIGGER trg_leads_updated BEFORE UPDATE ON leads
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();

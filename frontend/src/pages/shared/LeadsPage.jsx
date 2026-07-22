@@ -11,6 +11,12 @@ const SOURCE_OPTIONS = [
   "website", "google_ads", "facebook", "instagram", "linkedin", "whatsapp", "walk_in",
   "reference", "justdial", "indiamart", "other",
 ];
+const LEAD_TYPE_OPTIONS = ["course", "job", "internal_staff"];
+const LEAD_TYPE_LABELS = {
+  course: "Course",
+  job: "Job",
+  internal_staff: "Internal Staff",
+};
 
 const STATUS_COLORS = {
   new: "bg-slate-200 text-slate-700",
@@ -34,12 +40,13 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
   const [courses, setCourses] = useState([]);
   const [telecallers, setTelecallers] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ name: "", mobile: "", email: "", interested_course_id: "", source: "website", remarks: "" });
+  const [addForm, setAddForm] = useState({ name: "", mobile: "", email: "", lead_type: "course", interested_course_id: "", source: "website", remarks: "" });
   const [duplicateInfo, setDuplicateInfo] = useState(null);
 
   const [detailLead, setDetailLead] = useState(null);
@@ -58,6 +65,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
     try {
       const params = {};
       if (statusFilter) params.status = statusFilter;
+      if (typeFilter) params.lead_type = typeFilter;
       if (search) params.search = search;
       const { data } = await api.get("/leads", { params });
       setLeads(data);
@@ -75,7 +83,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
       api.get("/staff", { params: { role: "telecaller" } }).then((res) => setTelecallers(res.data)).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
+  }, [statusFilter, typeFilter]);
 
   const visibleLeads = useMemo(() => {
     if (!todayOnly) return leads;
@@ -97,9 +105,12 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
     e.preventDefault();
     setError("");
     try {
-      await api.post("/leads", { ...addForm, interested_course_id: addForm.interested_course_id || null });
+      await api.post("/leads", {
+        ...addForm,
+        interested_course_id: addForm.lead_type === "course" ? addForm.interested_course_id || null : null,
+      });
       setAddOpen(false);
-      setAddForm({ name: "", mobile: "", email: "", interested_course_id: "", source: "website", remarks: "" });
+      setAddForm({ name: "", mobile: "", email: "", lead_type: "course", interested_course_id: "", source: "website", remarks: "" });
       setDuplicateInfo(null);
       await load();
     } catch (err) {
@@ -157,6 +168,14 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">{todayOnly ? "Today's Follow-ups" : "Leads"}</h1>
         <div className="flex items-center gap-2">
+          <select className="input !w-40" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <option value="">All lead types</option>
+            {LEAD_TYPE_OPTIONS.map((t) => (
+              <option key={t} value={t}>
+                {LEAD_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
           <select className="input !w-44" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map((s) => (
@@ -183,6 +202,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
             <tr>
               <th>Name</th>
               <th>Mobile</th>
+              <th>Type</th>
               <th>Source</th>
               <th>Status</th>
               <th>Follow-up</th>
@@ -191,14 +211,15 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">Loading...</td></tr>
+              <tr><td colSpan={7} className="text-center text-slate-400 py-6">Loading...</td></tr>
             ) : visibleLeads.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">No leads found</td></tr>
+              <tr><td colSpan={7} className="text-center text-slate-400 py-6">No leads found</td></tr>
             ) : (
               visibleLeads.map((l) => (
                 <tr key={l.id}>
                   <td className="font-medium">{l.name}</td>
                   <td>{l.mobile}</td>
+                  <td>{LEAD_TYPE_LABELS[l.lead_type] || l.lead_type}</td>
                   <td>{l.source}</td>
                   <td><span className={`badge ${STATUS_COLORS[l.status] || "bg-slate-200"}`}>{l.status.replace(/_/g, " ")}</span></td>
                   <td>{l.follow_up_date || "—"}</td>
@@ -211,7 +232,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
                         Assign
                       </button>
                     )}
-                    {l.status !== "converted" && (
+                    {l.lead_type === "course" && l.status !== "converted" && (
                       <button
                         className="text-emerald-700 hover:underline text-xs font-medium"
                         onClick={() => { setConvertLead(l); setConvertForm({ total_course_fee: 0, discount: 0, initial_payment: 0, number_of_emis: 0, password: "" }); }}
@@ -247,14 +268,24 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
             <input className="input" type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} />
           </div>
           <div>
-            <label className="label">Interested Course</label>
-            <select className="input" value={addForm.interested_course_id} onChange={(e) => setAddForm({ ...addForm, interested_course_id: e.target.value })}>
-              <option value="">Select course</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+            <label className="label">Lead Type</label>
+            <select className="input" value={addForm.lead_type} onChange={(e) => setAddForm({ ...addForm, lead_type: e.target.value })}>
+              {LEAD_TYPE_OPTIONS.map((t) => (
+                <option key={t} value={t}>{LEAD_TYPE_LABELS[t]}</option>
               ))}
             </select>
           </div>
+          {addForm.lead_type === "course" && (
+            <div>
+              <label className="label">Interested Course</label>
+              <select className="input" value={addForm.interested_course_id} onChange={(e) => setAddForm({ ...addForm, interested_course_id: e.target.value })}>
+                <option value="">Select course</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="label">Lead Source</label>
             <select className="input" value={addForm.source} onChange={(e) => setAddForm({ ...addForm, source: e.target.value })}>

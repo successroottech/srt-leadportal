@@ -8,6 +8,7 @@ class LeadCreate(BaseModel):
     mobile: str
     alt_mobile: str | None = None
     email: EmailStr | None = None
+    lead_type: str = "course"
     interested_course_id: int | None = None
     source: str = "other"
     assigned_telecaller_id: int | None = None
@@ -20,6 +21,7 @@ class LeadUpdate(BaseModel):
     name: str | None = None
     alt_mobile: str | None = None
     email: EmailStr | None = None
+    lead_type: str | None = None
     interested_course_id: int | None = None
     source: str | None = None
     status: str | None = None
@@ -62,6 +64,7 @@ class LeadOut(BaseModel):
     mobile: str
     alt_mobile: str | None
     email: str | None
+    lead_type: str
     interested_course_id: int | None
     source: str
     assigned_telecaller_id: int | None
