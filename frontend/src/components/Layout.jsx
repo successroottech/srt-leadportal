@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
 import { api } from "../api/client";
 import SrtLogo from "../assets/SrtLogo";
 import { NAV_BY_ROLE } from "./nav";
@@ -15,6 +16,7 @@ const ROLE_LABELS = {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [unread, setUnread] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -52,9 +54,13 @@ export default function Layout() {
         }`}
       >
         <div className="flex items-center gap-2 px-5 py-5 border-b border-white/10">
-          <SrtLogo size={36} />
+          {settings.logo_path ? (
+            <img src={settings.logo_path} alt={settings.portal_name} className="h-9 w-9 rounded-md object-contain bg-white/5" />
+          ) : (
+            <SrtLogo size={36} />
+          )}
           <div>
-            <p className="text-sm font-bold leading-tight">SRT Portal</p>
+            <p className="text-sm font-bold leading-tight">{settings.portal_name}</p>
             <p className="text-[11px] text-gold-400">{ROLE_LABELS[user?.role] || ""}</p>
           </div>
         </div>

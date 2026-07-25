@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     auth, roles, staff, courses, batches, students, leads, candidates,
-    attendance, fees, expenses, leave, notifications, feedback, dashboards, audit, uploads,
+    attendance, fees, expenses, leave, notifications, feedback, dashboards, audit, uploads, settings,
 )
 
 api_router = APIRouter()
@@ -23,3 +23,4 @@ api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"]
 api_router.include_router(dashboards.router, prefix="/dashboards", tags=["dashboards"])
 api_router.include_router(audit.router, prefix="/audit-logs", tags=["audit"])
 api_router.include_router(uploads.router, prefix="/uploads", tags=["uploads"])
+api_router.include_router(settings.router, prefix="/settings", tags=["settings"])

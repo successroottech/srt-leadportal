@@ -19,6 +19,7 @@ export const NAV_BY_ROLE = {
     { to: "/admin/feedback", label: "Feedback & Complaints" },
     { to: "/admin/notifications", label: "Notifications" },
     { to: "/admin/audit-logs", label: "Audit Logs" },
+    { to: "/admin/settings", label: "Settings" },
   ],
   hr: [
     { to: "/hr", label: "Dashboard" },

@@ -12,12 +12,16 @@ from app.schemas.attendance import (
     StaffAttendanceOut, StaffAttendanceTodayOut, StaffAttendanceSessionOut, LiveAttendanceEntry,
     StudentAttendanceBulk, StudentAttendanceOut,
 )
+from app.api.v1.endpoints.settings import get_or_create_settings
 
 router = APIRouter()
 
 STAFF_ROLES = ("admin", "hr", "telecaller", "trainer")
-WORK_START_HOUR = 9
-WORK_END_HOUR = 18
+
+
+def _work_hours(db: Session) -> tuple[int, int]:
+    settings = get_or_create_settings(db)
+    return settings.work_start_hour, settings.work_end_hour
 
 
 def _open_break(db: Session, attendance_id: int) -> StaffAttendanceBreak | None:
@@ -67,7 +71,8 @@ def staff_login(db: Session = Depends(get_db), current_user: User = Depends(requ
     now = datetime.now(timezone.utc)
     record = _today_record(db, current_user.id)
     if not record:
-        late = now.hour >= WORK_START_HOUR + 1
+        work_start, _ = _work_hours(db)
+        late = now.hour >= work_start + 1
         record = StaffAttendance(user_id=current_user.id, attendance_date=date.today(), login_time=now, late_login=late,
                                   status="late" if late else "present")
         db.add(record)
@@ -100,7 +105,8 @@ def staff_logout(db: Session = Depends(get_db), current_user: User = Depends(req
     gross_seconds = sum((s.logout_time - s.login_time).total_seconds() for s in closed_sessions)
     net_hours = max(0.0, gross_seconds / 3600 - record.break_minutes / 60)
     record.total_hours = round(net_hours, 2)
-    record.early_logout = now.hour < WORK_END_HOUR
+    _, work_end = _work_hours(db)
+    record.early_logout = now.hour < work_end
     db.commit()
     return _build_today_status(db, record)
 

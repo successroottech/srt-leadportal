@@ -566,6 +566,24 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_module ON audit_logs(module, created_a
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
 
 -- =====================================================================
+-- 14. APP SETTINGS (single-row: branding + configurable business rules)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS app_settings (
+    id                  INTEGER PRIMARY KEY DEFAULT 1,
+    portal_name         VARCHAR(150) NOT NULL DEFAULT 'SRT Management Portal',
+    organization_name   VARCHAR(150) NOT NULL DEFAULT 'Success Root Technologies',
+    logo_path           VARCHAR(255),
+    work_start_hour     INTEGER NOT NULL DEFAULT 9,
+    work_end_hour       INTEGER NOT NULL DEFAULT 18,
+    support_email       VARCHAR(150),
+    support_phone       VARCHAR(20),
+    address             TEXT,
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_app_settings_singleton CHECK (id = 1)
+);
+INSERT INTO app_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================================
 -- SEED: system roles
 -- =====================================================================
 INSERT INTO roles (name, description, is_system, is_active)

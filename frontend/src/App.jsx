@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { SettingsProvider } from "./context/SettingsContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
@@ -18,6 +19,7 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import LeadsDashboard from "./pages/admin/LeadsDashboard";
 import BatchDashboard from "./pages/admin/BatchDashboard";
 import DailyFollowupPage from "./pages/shared/DailyFollowupPage";
+import AdminSettings from "./pages/admin/Settings";
 
 import HrDashboard from "./pages/hr/Dashboard";
 
@@ -48,6 +50,7 @@ function RoleHome() {
 export default function App() {
   return (
     <BrowserRouter>
+      <SettingsProvider>
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -74,6 +77,7 @@ export default function App() {
               <Route path="/admin/feedback" element={<FeedbackAdmin />} />
               <Route path="/admin/notifications" element={<NotificationsPage />} />
               <Route path="/admin/audit-logs" element={<AuditLogs />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
           </Route>
 
@@ -127,6 +131,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
+      </SettingsProvider>
     </BrowserRouter>
   );
 }

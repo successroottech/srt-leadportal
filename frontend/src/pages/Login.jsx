@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
 import SrtLogo from "../assets/SrtLogo";
 
 export default function Login() {
   const { login } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -28,9 +30,13 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-navy-950 px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-6">
-          <SrtLogo size={64} />
-          <h1 className="mt-3 text-xl font-bold text-white text-center">SRT Management Portal</h1>
-          <p className="text-sm text-gold-400">Success Root Technologies</p>
+          {settings.logo_path ? (
+            <img src={settings.logo_path} alt={settings.portal_name} className="h-16 w-16 rounded-xl object-contain bg-white/5" />
+          ) : (
+            <SrtLogo size={64} />
+          )}
+          <h1 className="mt-3 text-xl font-bold text-white text-center">{settings.portal_name}</h1>
+          <p className="text-sm text-gold-400">{settings.organization_name}</p>
         </div>
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
           <div>
