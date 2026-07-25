@@ -20,7 +20,17 @@ class StaffAttendance(Base):
     early_logout: Mapped[bool] = mapped_column(Boolean, default=False)
     break_minutes: Mapped[int] = mapped_column(Integer, default=0)
     overtime_hours: Mapped[float] = mapped_column(Numeric(5, 2), default=0)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), default="present")
+
+
+class StaffAttendanceBreak(Base):
+    __tablename__ = "staff_attendance_breaks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    staff_attendance_id: Mapped[int] = mapped_column(ForeignKey("staff_attendance.id", ondelete="CASCADE"))
+    break_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    break_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class StudentAttendance(Base):

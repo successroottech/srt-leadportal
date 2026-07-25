@@ -417,11 +417,20 @@ CREATE TABLE IF NOT EXISTS staff_attendance (
     early_logout    BOOLEAN NOT NULL DEFAULT FALSE,
     break_minutes   INTEGER NOT NULL DEFAULT 0,
     overtime_hours  NUMERIC(5,2) NOT NULL DEFAULT 0,
+    last_seen_at    TIMESTAMPTZ,
     status          VARCHAR(20) NOT NULL DEFAULT 'present' CHECK (status IN
         ('present','absent','leave','half_day','late','holiday','week_off')),
     UNIQUE (user_id, attendance_date)
 );
 CREATE INDEX IF NOT EXISTS idx_staff_attendance_date ON staff_attendance(attendance_date);
+
+CREATE TABLE IF NOT EXISTS staff_attendance_breaks (
+    id                      SERIAL PRIMARY KEY,
+    staff_attendance_id     INTEGER NOT NULL REFERENCES staff_attendance(id) ON DELETE CASCADE,
+    break_start             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    break_end               TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_breaks_att ON staff_attendance_breaks(staff_attendance_id);
 
 CREATE TABLE IF NOT EXISTS student_attendance (
     id                  SERIAL PRIMARY KEY,

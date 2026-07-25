@@ -13,7 +13,32 @@ class StaffAttendanceOut(BaseModel):
     total_hours: float | None
     late_login: bool
     early_logout: bool
+    break_minutes: int
+    last_seen_at: datetime | None
     status: str
+
+
+class StaffAttendanceTodayOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    login_time: datetime | None
+    logout_time: datetime | None
+    break_minutes: int
+    last_seen_at: datetime | None
+    status: str
+    on_break: bool
+    active_break_start: datetime | None
+
+
+class LiveAttendanceEntry(BaseModel):
+    user_id: int
+    name: str
+    role: str
+    login_time: datetime
+    break_minutes: int
+    last_seen_at: datetime | None
+    on_break: bool
+    active_break_start: datetime | None
 
 
 class StudentAttendanceMark(BaseModel):

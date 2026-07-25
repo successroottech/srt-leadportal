@@ -6,7 +6,7 @@ from app.models.student import Student, StudentBatchHistory, StudentDocument
 from app.models.fee import StudentFee, FeeEmi, Payment
 from app.models.lead import Lead, LeadFollowup
 from app.models.candidate import Candidate, CandidateInterview
-from app.models.attendance import StaffAttendance, StudentAttendance
+from app.models.attendance import StaffAttendance, StaffAttendanceBreak, StudentAttendance
 from app.models.leave import LeaveRequest
 from app.models.expense import Expense
 from app.models.notification import Notification
@@ -22,7 +22,7 @@ __all__ = [
     "StudentFee", "FeeEmi", "Payment",
     "Lead", "LeadFollowup",
     "Candidate", "CandidateInterview",
-    "StaffAttendance", "StudentAttendance",
+    "StaffAttendance", "StaffAttendanceBreak", "StudentAttendance",
     "LeaveRequest",
     "Expense",
     "Notification",
