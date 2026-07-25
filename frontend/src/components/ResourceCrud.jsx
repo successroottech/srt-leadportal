@@ -102,6 +102,29 @@ export default function ResourceCrud({
     }
   }
 
+  function renderActions(row) {
+    return (
+      <>
+        {canEdit && (
+          <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(row)}>
+            Edit
+          </button>
+        )}
+        {toggleActiveField && (
+          <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => handleToggleActive(row)}>
+            {row[toggleActiveField] ? "Deactivate" : "Activate"}
+          </button>
+        )}
+        {extraActions && extraActions(row, load)}
+        {canDelete && (
+          <button className="text-red-600 hover:underline text-xs font-medium" onClick={() => handleDelete(row)}>
+            Delete
+          </button>
+        )}
+      </>
+    );
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -135,59 +158,56 @@ export default function ResourceCrud({
 
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-      <div className="card overflow-x-auto">
-        <table className="data-table w-full">
-          <thead>
-            <tr>
-              {columns.map((c) => (
-                <th key={c.key}>{c.label}</th>
-              ))}
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={columns.length + 1} className="text-center text-slate-400 py-6">
-                  Loading...
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length + 1} className="text-center text-slate-400 py-6">
-                  No records found
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id}>
+      {loading ? (
+        <p className="text-center text-slate-400 py-6">Loading...</p>
+      ) : rows.length === 0 ? (
+        <p className="text-center text-slate-400 py-6">No records found</p>
+      ) : (
+        <>
+          <div className="hidden sm:block card overflow-x-auto">
+            <table className="data-table w-full">
+              <thead>
+                <tr>
                   {columns.map((c) => (
-                    <td key={c.key}>{c.render ? c.render(row) : String(row[c.key] ?? "")}</td>
+                    <th key={c.key}>{c.label}</th>
                   ))}
-                  <td className="whitespace-nowrap space-x-2">
-                    {canEdit && (
-                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(row)}>
-                        Edit
-                      </button>
-                    )}
-                    {toggleActiveField && (
-                      <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => handleToggleActive(row)}>
-                        {row[toggleActiveField] ? "Deactivate" : "Activate"}
-                      </button>
-                    )}
-                    {extraActions && extraActions(row, load)}
-                    {canDelete && (
-                      <button className="text-red-600 hover:underline text-xs font-medium" onClick={() => handleDelete(row)}>
-                        Delete
-                      </button>
-                    )}
-                  </td>
+                  <th>Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    {columns.map((c) => (
+                      <td key={c.key}>{c.render ? c.render(row) : String(row[c.key] ?? "")}</td>
+                    ))}
+                    <td className="whitespace-nowrap space-x-2">{renderActions(row)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="sm:hidden space-y-2">
+            {rows.map((row) => (
+              <div key={row.id} className="card p-3">
+                {columns.map((c, i) => (
+                  <div key={c.key} className={i === 0 ? "font-medium text-navy-900" : "mt-1 flex items-center justify-between text-xs text-slate-500"}>
+                    {i === 0 ? (
+                      c.render ? c.render(row) : String(row[c.key] ?? "")
+                    ) : (
+                      <>
+                        <span>{c.label}</span>
+                        <span>{c.render ? c.render(row) : String(row[c.key] ?? "")}</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+                <div className="mt-2 flex flex-wrap gap-3 border-t border-slate-100 pt-2">{renderActions(row)}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <Modal open={modalOpen} title={editing ? `Edit ${title}` : `Add ${title}`} onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSave} className="space-y-3">

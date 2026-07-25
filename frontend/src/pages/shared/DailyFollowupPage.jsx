@@ -146,54 +146,81 @@ export default function DailyFollowupPage({ allowManage = false }) {
     }
   }
 
+  function renderRowActions(b, state) {
+    return (
+      <>
+        {(state === "not_logged" || state === "scheduled") && (
+          <button className="text-emerald-700 hover:underline text-xs font-medium" onClick={() => startClass(b)}>Start Class</button>
+        )}
+        {state === "running" && (
+          <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => endClass(b)}>End Class</button>
+        )}
+        {(state === "not_logged" || state === "scheduled") && (
+          <button className="text-red-600 hover:underline text-xs font-medium" onClick={() => markMissed(b)}>Mark Missed</button>
+        )}
+        <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => openAttendance(b)}>Mark Attendance</button>
+      </>
+    );
+  }
+
   return (
     <div>
       <h1 className="text-xl font-bold text-navy-900 mb-4">Daily Batch Follow-up</h1>
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-      <div className="card overflow-x-auto">
-        <table className="data-table w-full">
-          <thead>
-            <tr>
-              <th>Batch</th><th>Scheduled Time</th><th>Status</th>
-              {allowManage && <th>Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={allowManage ? 4 : 3} className="text-center text-slate-400 py-6">Loading...</td></tr>
-            ) : batches.length === 0 ? (
-              <tr><td colSpan={allowManage ? 4 : 3} className="text-center text-slate-400 py-6">No active batches today</td></tr>
-            ) : (
-              batches.map((b) => {
-                const state = classState(b);
-                const meta = STATE_LABELS[state];
-                return (
-                  <tr key={b.id}>
-                    <td className="font-medium">{b.name}</td>
-                    <td>{b.batch_start_time || "—"} - {b.batch_end_time || "—"}</td>
-                    <td><span className={`badge ${meta.color}`}>{meta.label}</span></td>
-                    {allowManage && (
-                      <td className="whitespace-nowrap space-x-2">
-                        {(state === "not_logged" || state === "scheduled") && (
-                          <button className="text-emerald-700 hover:underline text-xs font-medium" onClick={() => startClass(b)}>Start Class</button>
-                        )}
-                        {state === "running" && (
-                          <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => endClass(b)}>End Class</button>
-                        )}
-                        {(state === "not_logged" || state === "scheduled") && (
-                          <button className="text-red-600 hover:underline text-xs font-medium" onClick={() => markMissed(b)}>Mark Missed</button>
-                        )}
-                        <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => openAttendance(b)}>Mark Attendance</button>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <p className="text-center text-slate-400 py-6">Loading...</p>
+      ) : batches.length === 0 ? (
+        <p className="text-center text-slate-400 py-6">No active batches today</p>
+      ) : (
+        <>
+          <div className="hidden sm:block card overflow-x-auto">
+            <table className="data-table w-full">
+              <thead>
+                <tr>
+                  <th>Batch</th><th>Scheduled Time</th><th>Status</th>
+                  {allowManage && <th>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {batches.map((b) => {
+                  const state = classState(b);
+                  const meta = STATE_LABELS[state];
+                  return (
+                    <tr key={b.id}>
+                      <td className="font-medium">{b.name}</td>
+                      <td>{b.batch_start_time || "—"} - {b.batch_end_time || "—"}</td>
+                      <td><span className={`badge ${meta.color}`}>{meta.label}</span></td>
+                      {allowManage && (
+                        <td className="whitespace-nowrap space-x-2">{renderRowActions(b, state)}</td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="sm:hidden space-y-2">
+            {batches.map((b) => {
+              const state = classState(b);
+              const meta = STATE_LABELS[state];
+              return (
+                <div key={b.id} className="card p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium text-navy-900">{b.name}</p>
+                    <span className={`badge ${meta.color}`}>{meta.label}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{b.batch_start_time || "—"} - {b.batch_end_time || "—"}</p>
+                  {allowManage && (
+                    <div className="mt-2 flex flex-wrap gap-3 border-t border-slate-100 pt-2">{renderRowActions(b, state)}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <Modal open={!!attendanceBatch} title={`Attendance: ${attendanceBatch?.name || ""}`} onClose={() => setAttendanceBatch(null)} wide>
         <form onSubmit={submitAttendance} className="space-y-3">

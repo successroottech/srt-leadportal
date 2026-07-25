@@ -132,39 +132,65 @@ export default function StudentsPage() {
       </div>
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-      <div className="card overflow-x-auto">
-        <table className="data-table w-full">
-          <thead>
-            <tr><th>Code</th><th>Name</th><th>Mobile</th><th>Type</th><th>Course Status</th><th>Placement</th><th>Actions</th></tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} className="text-center text-slate-400 py-6">Loading...</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-slate-400 py-6">No students found</td></tr>
-            ) : (
-              rows.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.student_code}</td>
-                  <td className="font-medium">{s.name}</td>
-                  <td>{s.mobile}</td>
-                  <td className="capitalize">{s.admission_type}</td>
-                  <td><span className="badge bg-slate-200 text-slate-700">{s.course_status}</span></td>
-                  <td>{s.placement_status}</td>
-                  <td className="whitespace-nowrap space-x-2">
-                    <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(s)}>
-                      Edit
-                    </button>
-                    <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => { setTransferRow(s); setTransferBatch(""); }}>
-                      Transfer Batch
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <p className="text-center text-slate-400 py-6">Loading...</p>
+      ) : rows.length === 0 ? (
+        <p className="text-center text-slate-400 py-6">No students found</p>
+      ) : (
+        <>
+          <div className="hidden sm:block card overflow-x-auto">
+            <table className="data-table w-full">
+              <thead>
+                <tr><th>Code</th><th>Name</th><th>Mobile</th><th>Type</th><th>Course Status</th><th>Placement</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {rows.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.student_code}</td>
+                    <td className="font-medium">{s.name}</td>
+                    <td>{s.mobile}</td>
+                    <td className="capitalize">{s.admission_type}</td>
+                    <td><span className="badge bg-slate-200 text-slate-700">{s.course_status}</span></td>
+                    <td>{s.placement_status}</td>
+                    <td className="whitespace-nowrap space-x-2">
+                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(s)}>
+                        Edit
+                      </button>
+                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => { setTransferRow(s); setTransferBatch(""); }}>
+                        Transfer Batch
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="sm:hidden space-y-2">
+            {rows.map((s) => (
+              <div key={s.id} className="card p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-navy-900">{s.name}</p>
+                  <span className="badge bg-slate-200 text-slate-700">{s.course_status}</span>
+                </div>
+                <p className="text-sm text-slate-500">{s.mobile} <span className="text-slate-400">({s.student_code})</span></p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                  <span className="capitalize">Type: {s.admission_type}</span>
+                  <span>Placement: {s.placement_status}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-3 border-t border-slate-100 pt-2">
+                  <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(s)}>
+                    Edit
+                  </button>
+                  <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => { setTransferRow(s); setTransferBatch(""); }}>
+                    Transfer Batch
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <Modal open={addOpen} title="Add Student" onClose={() => setAddOpen(false)} wide>
         <form onSubmit={submitAdd} className="grid grid-cols-1 sm:grid-cols-2 gap-3">

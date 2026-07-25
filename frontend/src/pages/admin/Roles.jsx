@@ -137,29 +137,63 @@ export default function Roles() {
         </div>
       </div>
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-      <div className="card overflow-x-auto">
-        <table className="data-table w-full">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Description</th>
-              <th>System</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+      {roles.length === 0 ? (
+        <p className="text-center text-slate-400 py-6">No roles found</p>
+      ) : (
+        <>
+          <div className="hidden sm:block card overflow-x-auto">
+            <table className="data-table w-full">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>System</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roles.map((r) => (
+                  <tr key={r.id}>
+                    <td className="font-medium">{r.name}</td>
+                    <td>{r.description}</td>
+                    <td>{r.is_system ? "Yes" : "No"}</td>
+                    <td>
+                      <span className={`badge ${r.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
+                        {r.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap space-x-2">
+                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(r)}>
+                        Edit
+                      </button>
+                      <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => handleToggleActive(r)}>
+                        {r.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                      {!r.is_system && (
+                        <button className="text-red-600 hover:underline text-xs font-medium" onClick={() => handleDelete(r)}>
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="sm:hidden space-y-2">
             {roles.map((r) => (
-              <tr key={r.id}>
-                <td className="font-medium">{r.name}</td>
-                <td>{r.description}</td>
-                <td>{r.is_system ? "Yes" : "No"}</td>
-                <td>
+              <div key={r.id} className="card p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-navy-900">{r.name}</p>
                   <span className={`badge ${r.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
                     {r.is_active ? "Active" : "Inactive"}
                   </span>
-                </td>
-                <td className="whitespace-nowrap space-x-2">
+                </div>
+                <p className="text-sm text-slate-500">{r.description || "—"}</p>
+                <p className="mt-1 text-xs text-slate-500">System role: {r.is_system ? "Yes" : "No"}</p>
+                <div className="mt-2 flex flex-wrap gap-3 border-t border-slate-100 pt-2">
                   <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(r)}>
                     Edit
                   </button>
@@ -171,12 +205,12 @@ export default function Roles() {
                       Delete
                     </button>
                   )}
-                </td>
-              </tr>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </>
+      )}
 
       <Modal open={modalOpen} title={editing ? `Edit Role: ${editing.name}` : "Add Role"} onClose={() => setModalOpen(false)} wide>
         <form onSubmit={handleSave} className="space-y-4">

@@ -170,41 +170,65 @@ export default function CandidatesPage({ allowManage = false }) {
         </div>
       )}
 
-      <div className="card overflow-x-auto">
-        <table className="data-table w-full">
-          <thead>
-            <tr>
-              <th>Code</th><th>Name</th><th>Mobile</th><th>Preferred Role</th><th>Status</th><th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">Loading...</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">No candidates found</td></tr>
-            ) : (
-              rows.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.candidate_code}</td>
-                  <td className="font-medium">{c.name}</td>
-                  <td>{c.mobile}</td>
-                  <td>{c.preferred_job_role || "—"}</td>
-                  <td><span className="badge bg-slate-200 text-slate-700">{c.status.replace(/_/g, " ")}</span></td>
-                  <td className="whitespace-nowrap space-x-2">
-                    <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(c)}>Update</button>
-                    {allowManage && (
-                      <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => { setAssignRow(c); setAssignTo(""); }}>Assign</button>
-                    )}
-                    <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => { setInterviewRow(c); setInterviewForm({ interview_date: "", company: "", job_role: "", status: "scheduled" }); }}>
-                      Interview
-                    </button>
-                  </td>
+      {loading ? (
+        <p className="text-center text-slate-400 py-6">Loading...</p>
+      ) : rows.length === 0 ? (
+        <p className="text-center text-slate-400 py-6">No candidates found</p>
+      ) : (
+        <>
+          <div className="hidden sm:block card overflow-x-auto">
+            <table className="data-table w-full">
+              <thead>
+                <tr>
+                  <th>Code</th><th>Name</th><th>Mobile</th><th>Preferred Role</th><th>Status</th><th>Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {rows.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.candidate_code}</td>
+                    <td className="font-medium">{c.name}</td>
+                    <td>{c.mobile}</td>
+                    <td>{c.preferred_job_role || "—"}</td>
+                    <td><span className="badge bg-slate-200 text-slate-700">{c.status.replace(/_/g, " ")}</span></td>
+                    <td className="whitespace-nowrap space-x-2">
+                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(c)}>Update</button>
+                      {allowManage && (
+                        <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => { setAssignRow(c); setAssignTo(""); }}>Assign</button>
+                      )}
+                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => { setInterviewRow(c); setInterviewForm({ interview_date: "", company: "", job_role: "", status: "scheduled" }); }}>
+                        Interview
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="sm:hidden space-y-2">
+            {rows.map((c) => (
+              <div key={c.id} className="card p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-navy-900">{c.name}</p>
+                  <span className="badge bg-slate-200 text-slate-700">{c.status.replace(/_/g, " ")}</span>
+                </div>
+                <p className="text-sm text-slate-500">{c.mobile} <span className="text-slate-400">({c.candidate_code})</span></p>
+                <p className="mt-1 text-xs text-slate-500">Preferred role: {c.preferred_job_role || "—"}</p>
+                <div className="mt-2 flex flex-wrap gap-3 border-t border-slate-100 pt-2">
+                  <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(c)}>Update</button>
+                  {allowManage && (
+                    <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => { setAssignRow(c); setAssignTo(""); }}>Assign</button>
+                  )}
+                  <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => { setInterviewRow(c); setInterviewForm({ interview_date: "", company: "", job_role: "", status: "scheduled" }); }}>
+                    Interview
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <Modal open={addOpen} title="New Candidate" onClose={() => setAddOpen(false)}>
         <form onSubmit={submitAdd} className="space-y-3">

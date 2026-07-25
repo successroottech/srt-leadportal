@@ -133,43 +133,72 @@ export default function BatchesPage({ allowManage = false }) {
       </div>
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-      <div className="card overflow-x-auto">
-        <table className="data-table w-full">
-          <thead>
-            <tr><th>Code</th><th>Name</th><th>Mode</th><th>Start Date</th><th>Status</th><th>Actions</th></tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">Loading...</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">No batches found</td></tr>
-            ) : (
-              rows.map((b) => (
-                <tr key={b.id}>
-                  <td>{b.batch_code}</td>
-                  <td className="font-medium">{b.name}</td>
-                  <td>{b.batch_mode}</td>
-                  <td>{b.start_date || "—"}</td>
-                  <td>
-                    {allowManage ? (
-                      <select className="input !w-32 !py-1" value={b.status} onChange={(e) => updateStatus(b, e.target.value)}>
-                        {STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
-                      </select>
-                    ) : (
-                      <span className="badge bg-slate-200 text-slate-700">{b.status}</span>
-                    )}
-                  </td>
-                  <td>
-                    <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openDetail(b)}>
-                      View Progress
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <p className="text-center text-slate-400 py-6">Loading...</p>
+      ) : rows.length === 0 ? (
+        <p className="text-center text-slate-400 py-6">No batches found</p>
+      ) : (
+        <>
+          <div className="hidden sm:block card overflow-x-auto">
+            <table className="data-table w-full">
+              <thead>
+                <tr><th>Code</th><th>Name</th><th>Mode</th><th>Start Date</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {rows.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.batch_code}</td>
+                    <td className="font-medium">{b.name}</td>
+                    <td>{b.batch_mode}</td>
+                    <td>{b.start_date || "—"}</td>
+                    <td>
+                      {allowManage ? (
+                        <select className="input !w-32 !py-1" value={b.status} onChange={(e) => updateStatus(b, e.target.value)}>
+                          {STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
+                        </select>
+                      ) : (
+                        <span className="badge bg-slate-200 text-slate-700">{b.status}</span>
+                      )}
+                    </td>
+                    <td>
+                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openDetail(b)}>
+                        View Progress
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="sm:hidden space-y-2">
+            {rows.map((b) => (
+              <div key={b.id} className="card p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-navy-900">{b.name}</p>
+                  {allowManage ? (
+                    <select className="input !w-28 !py-1 !text-xs" value={b.status} onChange={(e) => updateStatus(b, e.target.value)}>
+                      {STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
+                    </select>
+                  ) : (
+                    <span className="badge bg-slate-200 text-slate-700">{b.status}</span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500">{b.batch_code}</p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                  <span>Mode: {b.batch_mode}</span>
+                  <span>Start: {b.start_date || "—"}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-3 border-t border-slate-100 pt-2">
+                  <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openDetail(b)}>
+                    View Progress
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <Modal open={addOpen} title="New Batch" onClose={() => setAddOpen(false)}>
         <form onSubmit={submitAdd} className="space-y-3">

@@ -219,57 +219,96 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
 
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-      <div className="card overflow-x-auto">
-        <table className="data-table w-full">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Mobile</th>
-              <th>Type</th>
-              <th>Source</th>
-              <th>Status</th>
-              <th>Follow-up</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} className="text-center text-slate-400 py-6">Loading...</td></tr>
-            ) : visibleLeads.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-slate-400 py-6">No leads found</td></tr>
-            ) : (
-              visibleLeads.map((l) => (
-                <tr key={l.id}>
-                  <td className="font-medium">{l.name}</td>
-                  <td>{l.mobile}</td>
-                  <td>{LEAD_TYPE_LABELS[l.lead_type] || l.lead_type}</td>
-                  <td>{l.source}</td>
-                  <td><span className={`badge ${STATUS_COLORS[l.status] || "bg-slate-200"}`}>{l.status.replace(/_/g, " ")}</span></td>
-                  <td>{l.follow_up_date || "—"}</td>
-                  <td className="whitespace-nowrap space-x-2">
-                    <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openDetail(l)}>
-                      Update
-                    </button>
-                    {allowManage && (
-                      <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => { setAssignLead(l); setAssignTo(""); }}>
-                        Assign
-                      </button>
-                    )}
-                    {l.lead_type === "course" && l.status !== "converted" && (
-                      <button
-                        className="text-emerald-700 hover:underline text-xs font-medium"
-                        onClick={() => { setConvertLead(l); setConvertForm({ total_course_fee: 0, discount: 0, initial_payment: 0, number_of_emis: 0, password: "" }); }}
-                      >
-                        Convert
-                      </button>
-                    )}
-                  </td>
+      {loading ? (
+        <p className="text-center text-slate-400 py-6">Loading...</p>
+      ) : visibleLeads.length === 0 ? (
+        <p className="text-center text-slate-400 py-6">No leads found</p>
+      ) : (
+        <>
+          {/* Desktop/tablet: table */}
+          <div className="hidden sm:block card overflow-x-auto">
+            <table className="data-table w-full">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Mobile</th>
+                  <th>Type</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Follow-up</th>
+                  <th>Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {visibleLeads.map((l) => (
+                  <tr key={l.id}>
+                    <td className="font-medium">{l.name}</td>
+                    <td>{l.mobile}</td>
+                    <td>{LEAD_TYPE_LABELS[l.lead_type] || l.lead_type}</td>
+                    <td>{l.source}</td>
+                    <td><span className={`badge ${STATUS_COLORS[l.status] || "bg-slate-200"}`}>{l.status.replace(/_/g, " ")}</span></td>
+                    <td>{l.follow_up_date || "—"}</td>
+                    <td className="whitespace-nowrap space-x-2">
+                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openDetail(l)}>
+                        Update
+                      </button>
+                      {allowManage && (
+                        <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => { setAssignLead(l); setAssignTo(""); }}>
+                          Assign
+                        </button>
+                      )}
+                      {l.lead_type === "course" && l.status !== "converted" && (
+                        <button
+                          className="text-emerald-700 hover:underline text-xs font-medium"
+                          onClick={() => { setConvertLead(l); setConvertForm({ total_course_fee: 0, discount: 0, initial_payment: 0, number_of_emis: 0, password: "" }); }}
+                        >
+                          Convert
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: cards */}
+          <div className="sm:hidden space-y-2">
+            {visibleLeads.map((l) => (
+              <div key={l.id} className="card p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-navy-900">{l.name}</p>
+                  <span className={`badge ${STATUS_COLORS[l.status] || "bg-slate-200"}`}>{l.status.replace(/_/g, " ")}</span>
+                </div>
+                <p className="text-sm text-slate-500">{l.mobile}</p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                  <span>Type: {LEAD_TYPE_LABELS[l.lead_type] || l.lead_type}</span>
+                  <span>Source: {l.source}</span>
+                  <span>Follow-up: {l.follow_up_date || "—"}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-3 border-t border-slate-100 pt-2">
+                  <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openDetail(l)}>
+                    Update
+                  </button>
+                  {allowManage && (
+                    <button className="text-amber-700 hover:underline text-xs font-medium" onClick={() => { setAssignLead(l); setAssignTo(""); }}>
+                      Assign
+                    </button>
+                  )}
+                  {l.lead_type === "course" && l.status !== "converted" && (
+                    <button
+                      className="text-emerald-700 hover:underline text-xs font-medium"
+                      onClick={() => { setConvertLead(l); setConvertForm({ total_course_fee: 0, discount: 0, initial_payment: 0, number_of_emis: 0, password: "" }); }}
+                    >
+                      Convert
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <Modal open={addOpen} title="New Lead" onClose={() => setAddOpen(false)}>
         <form onSubmit={submitAdd} className="space-y-3">
