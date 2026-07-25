@@ -1,8 +1,10 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.schemas.common import OptionalEmail
+
+ALLOWED_EMI_COUNTS = (0, 3, 4, 5)
 
 
 class StudentCreate(BaseModel):
@@ -29,6 +31,13 @@ class StudentCreate(BaseModel):
     discount: float = 0
     initial_payment: float = 0
     number_of_emis: int = 0
+
+    @field_validator("number_of_emis")
+    @classmethod
+    def validate_emi_count(cls, value: int) -> int:
+        if value not in ALLOWED_EMI_COUNTS:
+            raise ValueError("number_of_emis must be 0 (pay in full) or between 3 and 5")
+        return value
 
 
 class StudentUpdate(BaseModel):
@@ -89,6 +98,9 @@ class StudentOut(BaseModel):
     placement_status: str
     is_active: bool
     created_at: datetime
+    balance_fee: float | None = None
+    next_fee_due_date: date | None = None
+    fee_status: str | None = None
 
 
 class TransferBatchRequest(BaseModel):

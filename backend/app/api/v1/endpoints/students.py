@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -7,7 +9,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.models.role import Role
 from app.models.student import Student, StudentBatchHistory
-from app.models.fee import StudentFee, FeeEmi
+from app.models.fee import StudentFee, FeeEmi, Payment
 from app.models.batch import Batch
 from app.schemas.student import StudentCreate, StudentUpdate, StudentOut, TransferBatchRequest
 from app.services.audit import log_action
@@ -18,6 +20,47 @@ router = APIRouter()
 
 STAFF_ROLES = ("admin", "hr", "trainer", "telecaller")
 ADMISSION_TYPES = ("course", "job_service", "both")
+
+
+def _attach_fee_summary(db: Session, students: list[Student]) -> None:
+    """Sets transient (unmapped) balance_fee/next_fee_due_date/fee_status attrs
+    on each Student so StudentOut can serialize them without an N+1 query per row."""
+    if not students:
+        return
+    student_ids = [s.id for s in students]
+    fees = db.query(StudentFee).filter(StudentFee.student_id.in_(student_ids)).all()
+    fee_by_student = {f.student_id: f for f in fees}
+    fee_ids = [f.id for f in fees]
+    unpaid_emis = (
+        db.query(FeeEmi)
+        .filter(FeeEmi.student_fee_id.in_(fee_ids or [-1]), FeeEmi.status != "paid")
+        .order_by(FeeEmi.due_date)
+        .all()
+    )
+    next_due_by_fee = {}
+    for emi in unpaid_emis:
+        next_due_by_fee.setdefault(emi.student_fee_id, emi.due_date)
+
+    today = date.today()
+    soon = today + timedelta(days=7)
+    for student in students:
+        fee = fee_by_student.get(student.id)
+        if not fee:
+            student.balance_fee = None
+            student.next_fee_due_date = None
+            student.fee_status = None
+            continue
+        student.balance_fee = float(fee.balance_fee)
+        next_due = next_due_by_fee.get(fee.id)
+        student.next_fee_due_date = next_due
+        if fee.balance_fee <= 0:
+            student.fee_status = "paid"
+        elif next_due and next_due < today:
+            student.fee_status = "overdue"
+        elif next_due and next_due <= soon:
+            student.fee_status = "due_soon"
+        else:
+            student.fee_status = "upcoming"
 
 
 @router.get("", response_model=list[StudentOut])
@@ -43,7 +86,9 @@ def list_students(
     if search:
         like = f"%{search}%"
         q = q.filter((Student.name.ilike(like)) | (Student.mobile.ilike(like)) | (Student.student_code.ilike(like)))
-    return q.order_by(Student.id.desc()).all()
+    students = q.order_by(Student.id.desc()).all()
+    _attach_fee_summary(db, students)
+    return students
 
 
 @router.post("", response_model=StudentOut)
@@ -76,11 +121,13 @@ def create_student(payload: StudentCreate, db: Session = Depends(get_db), user: 
     log_action(db, user_id=user.id, action="create", module="students", record_id=student.id)
     db.commit()
     db.refresh(student)
+    _attach_fee_summary(db, [student])
     return student
 
 
 @router.get("/me", response_model=StudentOut)
-def my_profile(student: Student = Depends(get_current_student_profile)):
+def my_profile(student: Student = Depends(get_current_student_profile), db: Session = Depends(get_db)):
+    _attach_fee_summary(db, [student])
     return student
 
 
@@ -89,6 +136,7 @@ def get_student(student_id: int, db: Session = Depends(get_db), _: User = Depend
     student = db.get(Student, student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+    _attach_fee_summary(db, [student])
     return student
 
 
@@ -110,6 +158,11 @@ def delete_student(student_id: int, db: Session = Depends(get_db), user: User = 
     student = db.get(Student, student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+    if db.query(Payment).filter(Payment.student_id == student_id).first():
+        raise HTTPException(
+            status_code=400,
+            detail="This student has recorded fee payments and cannot be deleted (receipts must be retained). Deactivate the student instead.",
+        )
     db.delete(student)
     log_action(db, user_id=user.id, action="delete", module="students", record_id=student_id)
     db.commit()
