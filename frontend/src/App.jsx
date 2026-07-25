@@ -20,6 +20,7 @@ import LeadsDashboard from "./pages/admin/LeadsDashboard";
 import BatchDashboard from "./pages/admin/BatchDashboard";
 import DailyFollowupPage from "./pages/shared/DailyFollowupPage";
 import AdminSettings from "./pages/admin/Settings";
+import ChatPage from "./pages/shared/ChatPage";
 
 import HrDashboard from "./pages/hr/Dashboard";
 
@@ -78,6 +79,7 @@ export default function App() {
               <Route path="/admin/notifications" element={<NotificationsPage />} />
               <Route path="/admin/audit-logs" element={<AuditLogs />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/chat" element={<ChatPage />} />
             </Route>
           </Route>
 
@@ -90,6 +92,7 @@ export default function App() {
               <Route path="/hr/candidates" element={<CandidatesPage allowManage />} />
               <Route path="/hr/students" element={<StudentsPage />} />
               <Route path="/hr/notifications" element={<NotificationsPage />} />
+              <Route path="/hr/chat" element={<ChatPage />} />
             </Route>
           </Route>
 
@@ -102,6 +105,7 @@ export default function App() {
               <Route path="/telecaller/attendance" element={<StaffAttendanceSelf />} />
               <Route path="/telecaller/leave" element={<StaffLeaveSelf />} />
               <Route path="/telecaller/notifications" element={<NotificationsPage />} />
+              <Route path="/telecaller/chat" element={<ChatPage />} />
             </Route>
           </Route>
 
@@ -113,6 +117,7 @@ export default function App() {
               <Route path="/trainer/attendance" element={<StaffAttendanceSelf />} />
               <Route path="/trainer/leave" element={<StaffLeaveSelf />} />
               <Route path="/trainer/notifications" element={<NotificationsPage />} />
+              <Route path="/trainer/chat" element={<ChatPage />} />
             </Route>
           </Route>
 

@@ -9,8 +9,13 @@ from app.models.user import User
 
 router = APIRouter()
 
-ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png", ".mp4", ".webp"}
-MAX_SIZE_MB = 20
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".zip",
+    ".jpg", ".jpeg", ".png", ".webp", ".gif",
+    ".mp4", ".webm", ".mov",
+    ".mp3", ".wav", ".ogg", ".m4a",
+}
+MAX_SIZE_MB = 50
 
 
 @router.post("")

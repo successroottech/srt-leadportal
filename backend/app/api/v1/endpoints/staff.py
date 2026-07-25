@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -93,6 +94,14 @@ def delete_staff(staff_id: int, db: Session = Depends(get_db), user: User = Depe
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
     db.delete(staff)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="This staff member has related records (leads, attendance, messages, etc.) and cannot be deleted. Deactivate the account instead.",
+        )
     log_action(db, user_id=user.id, action="delete", module="staff", record_id=staff_id)
     db.commit()
     return {"detail": "Staff deleted"}

@@ -19,9 +19,11 @@ export default function Layout() {
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [unread, setUnread] = useState(0);
+  const [chatUnread, setChatUnread] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const items = NAV_BY_ROLE[user?.role] || [];
+  const hasChat = user?.role !== "student";
 
   useEffect(() => {
     let active = true;
@@ -40,6 +42,25 @@ export default function Layout() {
       clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasChat) return;
+    let active = true;
+    async function load() {
+      try {
+        const { data } = await api.get("/chat/unread-count");
+        if (active) setChatUnread(data.count);
+      } catch {
+        /* ignore */
+      }
+    }
+    load();
+    const interval = setInterval(load, 15000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [hasChat]);
 
   async function handleLogout() {
     await logout();
@@ -94,6 +115,16 @@ export default function Layout() {
           </button>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-4">
+            {hasChat && (
+              <NavLink to={`/${user?.role}/chat`} className="relative text-slate-500 hover:text-navy-900" title="Chat">
+                💬
+                {chatUnread > 0 && (
+                  <span className="absolute -top-1 -right-2 rounded-full bg-red-600 px-1.5 text-[10px] text-white">
+                    {chatUnread}
+                  </span>
+                )}
+              </NavLink>
+            )}
             <NavLink
               to={`/${user?.role}/notifications`}
               className="relative text-slate-500 hover:text-navy-900"

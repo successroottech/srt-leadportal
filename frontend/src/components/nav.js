@@ -1,6 +1,7 @@
 export const NAV_BY_ROLE = {
   admin: [
     { to: "/admin", label: "Dashboard" },
+    { to: "/admin/chat", label: "Chat" },
     { to: "/admin/roles", label: "Roles" },
     { to: "/admin/staff", label: "Staff" },
     { to: "/admin/leads", label: "Leads" },
@@ -23,6 +24,7 @@ export const NAV_BY_ROLE = {
   ],
   hr: [
     { to: "/hr", label: "Dashboard" },
+    { to: "/hr/chat", label: "Chat" },
     { to: "/hr/staff", label: "Staff" },
     { to: "/hr/attendance", label: "Attendance" },
     { to: "/hr/leave", label: "Leave Requests" },
@@ -32,6 +34,7 @@ export const NAV_BY_ROLE = {
   ],
   telecaller: [
     { to: "/telecaller", label: "Dashboard" },
+    { to: "/telecaller/chat", label: "Chat" },
     { to: "/telecaller/leads", label: "My Leads" },
     { to: "/telecaller/followups", label: "Today's Follow-ups" },
     { to: "/telecaller/candidates", label: "Candidates" },
@@ -41,6 +44,7 @@ export const NAV_BY_ROLE = {
   ],
   trainer: [
     { to: "/trainer", label: "Dashboard" },
+    { to: "/trainer/chat", label: "Chat" },
     { to: "/trainer/batches", label: "My Batches" },
     { to: "/trainer/daily-followup", label: "Daily Batch Follow-up" },
     { to: "/trainer/attendance", label: "Attendance" },

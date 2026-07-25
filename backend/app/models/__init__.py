@@ -13,6 +13,7 @@ from app.models.notification import Notification
 from app.models.feedback import FeedbackComplaint
 from app.models.audit import AuditLog
 from app.models.settings import AppSettings
+from app.models.chat import ChatConversation, ChatMessage, ChatParticipant
 
 __all__ = [
     "Role", "RolePermission",
@@ -30,4 +31,5 @@ __all__ = [
     "FeedbackComplaint",
     "AuditLog",
     "AppSettings",
+    "ChatConversation", "ChatMessage", "ChatParticipant",
 ]
