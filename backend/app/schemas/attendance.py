@@ -18,12 +18,20 @@ class StaffAttendanceOut(BaseModel):
     status: str
 
 
+class StaffAttendanceSessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    login_time: datetime
+    logout_time: datetime | None
+
+
 class StaffAttendanceTodayOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    login_time: datetime | None
-    logout_time: datetime | None
+    is_logged_in: bool
+    sessions: list[StaffAttendanceSessionOut]
     break_minutes: int
+    total_hours: float | None
     last_seen_at: datetime | None
     status: str
     on_break: bool

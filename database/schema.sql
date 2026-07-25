@@ -432,6 +432,14 @@ CREATE TABLE IF NOT EXISTS staff_attendance_breaks (
 );
 CREATE INDEX IF NOT EXISTS idx_staff_attendance_breaks_att ON staff_attendance_breaks(staff_attendance_id);
 
+CREATE TABLE IF NOT EXISTS staff_attendance_sessions (
+    id                      SERIAL PRIMARY KEY,
+    staff_attendance_id     INTEGER NOT NULL REFERENCES staff_attendance(id) ON DELETE CASCADE,
+    login_time              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    logout_time             TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_sessions_att ON staff_attendance_sessions(staff_attendance_id);
+
 CREATE TABLE IF NOT EXISTS student_attendance (
     id                  SERIAL PRIMARY KEY,
     student_id          INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,

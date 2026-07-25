@@ -33,6 +33,15 @@ class StaffAttendanceBreak(Base):
     break_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class StaffAttendanceSession(Base):
+    __tablename__ = "staff_attendance_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    staff_attendance_id: Mapped[int] = mapped_column(ForeignKey("staff_attendance.id", ondelete="CASCADE"))
+    login_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    logout_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class StudentAttendance(Base):
     __tablename__ = "student_attendance"
     __table_args__ = (UniqueConstraint("student_id", "batch_id", "attendance_date", name="uq_student_attendance_date"),)
