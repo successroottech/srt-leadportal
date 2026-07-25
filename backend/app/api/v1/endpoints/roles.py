@@ -12,8 +12,18 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[RoleOut])
-def list_roles(db: Session = Depends(get_db), _: User = Depends(require_roles("admin"))):
-    return db.query(Role).options(joinedload(Role.permissions)).order_by(Role.id).all()
+def list_roles(
+    is_active: bool | None = None,
+    search: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("admin")),
+):
+    q = db.query(Role).options(joinedload(Role.permissions))
+    if is_active is not None:
+        q = q.filter(Role.is_active == is_active)
+    if search:
+        q = q.filter(Role.name.ilike(f"%{search}%"))
+    return q.order_by(Role.id).all()
 
 
 @router.post("", response_model=RoleOut)

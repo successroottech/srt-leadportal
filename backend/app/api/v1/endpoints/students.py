@@ -17,6 +17,7 @@ from app.services.fees import create_student_fee_record
 router = APIRouter()
 
 STAFF_ROLES = ("admin", "hr", "trainer", "telecaller")
+ADMISSION_TYPES = ("course", "job_service", "both")
 
 
 @router.get("", response_model=list[StudentOut])
@@ -47,6 +48,8 @@ def list_students(
 
 @router.post("", response_model=StudentOut)
 def create_student(payload: StudentCreate, db: Session = Depends(get_db), user: User = Depends(require_roles(*STAFF_ROLES))):
+    if payload.admission_type not in ADMISSION_TYPES:
+        raise HTTPException(status_code=422, detail=f"admission_type must be one of {ADMISSION_TYPES}")
     if db.query(Student).filter(Student.mobile == payload.mobile).first():
         raise HTTPException(status_code=400, detail="A student with this mobile number already exists")
     if payload.email and db.query(Student).filter(Student.email == payload.email).first():

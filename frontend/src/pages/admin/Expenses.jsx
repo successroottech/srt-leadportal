@@ -3,7 +3,7 @@ import ResourceCrud from "../../components/ResourceCrud";
 
 const CATEGORY_OPTIONS = [
   "Staff Salary", "Office Rent", "Electricity Bill", "Internet Bill", "Laptop Purchase",
-  "Computer Accessories", "Chairs", "Tables", "Office Maintenance", "Marketing Expenses",
+  "Computer Accessories", "Chairs/Tables", "Office Maintenance", "Marketing Expenses",
   "Advertisement Expenses", "Software Subscription", "Trainer Payment", "Travel Expenses",
   "Refreshments", "Other Expenses",
 ].map((c) => ({ value: c, label: c }));
@@ -55,6 +55,7 @@ export default function Expenses() {
       endpoint="/expenses"
       columns={columns}
       formFields={formFields}
+      exportFilename="expenses"
       extraActions={(row, reload) =>
         row.approval_status === "pending" ? (
           <span key="decision">

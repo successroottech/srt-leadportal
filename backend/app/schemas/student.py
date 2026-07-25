@@ -82,6 +82,7 @@ class StudentOut(BaseModel):
     interview_status: str | None
     selected_company: str | None
     job_role: str | None
+    job_joining_date: date | None
     salary_package: float | None
     placement_status: str
     is_active: bool

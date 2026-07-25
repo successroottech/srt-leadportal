@@ -54,6 +54,7 @@ export default function Staff() {
         columns={columns}
         formFields={formFields}
         toggleActiveField="is_active"
+        exportFilename="staff"
       />
     </div>
   );

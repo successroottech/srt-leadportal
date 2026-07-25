@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+import csv
+import io
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -93,6 +96,35 @@ def delete_candidate(candidate_id: int, db: Session = Depends(get_db), user: Use
     log_action(db, user_id=user.id, action="delete", module="candidates", record_id=candidate_id)
     db.commit()
     return {"detail": "Candidate deleted"}
+
+
+@router.post("/bulk-upload")
+async def bulk_upload(file: UploadFile = File(...), db: Session = Depends(get_db), user: User = Depends(require_roles(*ALL_ROLES))):
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only .csv files are supported")
+    raw = (await file.read()).decode("utf-8-sig", errors="ignore")
+    reader = csv.DictReader(io.StringIO(raw))
+    fieldnames = {(f or "").strip().lower() for f in (reader.fieldnames or [])}
+    if not {"name", "mobile"}.issubset(fieldnames):
+        raise HTTPException(status_code=400, detail="CSV must have at least 'name' and 'mobile' columns (email optional)")
+
+    created, skipped, errors = 0, 0, []
+    for i, raw_row in enumerate(reader, start=2):
+        row = {(k or "").strip().lower(): (v or "").strip() for k, v in raw_row.items()}
+        name, mobile, email = row.get("name"), row.get("mobile"), row.get("email") or None
+        if not name or not mobile:
+            errors.append(f"Row {i}: missing name or mobile")
+            continue
+        if _check_duplicate(db, mobile, email):
+            skipped += 1
+            continue
+        candidate = Candidate(candidate_code=next_code(db, Candidate, Candidate.candidate_code, "SRT-CAN-"), name=name, mobile=mobile, email=email)
+        db.add(candidate)
+        db.flush()
+        created += 1
+    log_action(db, user_id=user.id, action="create", module="candidates", record_id=None, updated_value={"bulk_upload_created": created})
+    db.commit()
+    return {"created": created, "skipped_duplicates": skipped, "errors": errors}
 
 
 @router.post("/bulk-assign")

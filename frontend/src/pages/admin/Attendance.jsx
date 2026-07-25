@@ -28,7 +28,7 @@ export default function AdminAttendance() {
         </div>
       )}
       <div className="mb-3">
-        <input className="input !w-48" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <input className="input w-full sm:!w-48" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
       <div className="card overflow-x-auto">
         <table className="data-table w-full">

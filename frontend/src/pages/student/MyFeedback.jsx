@@ -34,7 +34,7 @@ export default function MyFeedback() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">Feedback & Complaints</h1>
         <button className="btn-gold" onClick={() => setOpen(true)}>+ Submit</button>
       </div>

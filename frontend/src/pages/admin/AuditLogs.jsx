@@ -22,9 +22,9 @@ export default function AuditLogs() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">Audit Logs</h1>
-        <input className="input !w-48" placeholder="Filter by module" value={module} onChange={(e) => setModule(e.target.value)} />
+        <input className="input w-full sm:!w-48" placeholder="Filter by module" value={module} onChange={(e) => setModule(e.target.value)} />
       </div>
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
       <div className="card overflow-x-auto">

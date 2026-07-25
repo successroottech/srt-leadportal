@@ -60,3 +60,22 @@ class SyllabusModuleOut(BaseModel):
     module_name: str
     sequence: int
     topics: list[SyllabusTopicOut] = []
+
+
+class CourseMaterialCreate(BaseModel):
+    title: str
+    material_type: str
+    file_path: str | None = None
+    external_link: str | None = None
+
+
+class CourseMaterialOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    course_id: int
+    title: str
+    material_type: str
+    file_path: str | None
+    external_link: str | None
+    uploaded_by: int | None
+    uploaded_at: datetime

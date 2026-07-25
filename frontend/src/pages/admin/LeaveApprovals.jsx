@@ -32,9 +32,9 @@ export default function LeaveApprovals() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">Leave & Permission Approvals</h1>
-        <select className="input !w-40" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select className="input w-full sm:!w-40" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, apiErrorMessage } from "../../api/client";
+import { exportCsv } from "../../utils/exportCsv";
 import Modal from "../../components/Modal";
 
 const STATUS_OPTIONS = [
@@ -25,6 +26,10 @@ export default function CandidatesPage({ allowManage = false }) {
 
   const [interviewRow, setInterviewRow] = useState(null);
   const [interviewForm, setInterviewForm] = useState({ interview_date: "", company: "", job_role: "", status: "scheduled" });
+
+  const fileInputRef = useRef(null);
+  const [uploadResult, setUploadResult] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -98,21 +103,72 @@ export default function CandidatesPage({ allowManage = false }) {
     }
   }
 
+  async function handleBulkUploadFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    setUploadResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post("/candidates/bulk-upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      setUploadResult(data);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function handleExport() {
+    exportCsv(
+      rows,
+      [
+        { key: "candidate_code", label: "Code" },
+        { key: "name", label: "Name" },
+        { key: "mobile", label: "Mobile" },
+        { key: "email", label: "Email" },
+        { key: "preferred_job_role", label: "Preferred Role" },
+        { key: "status", label: "Status" },
+        { key: "follow_up_date", label: "Follow-up Date" },
+      ],
+      "candidates"
+    );
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">Candidates</h1>
-        <div className="flex items-center gap-2">
-          <select className="input !w-48" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <div className="flex flex-wrap items-center gap-2">
+          <select className="input w-full sm:!w-48" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
             ))}
           </select>
+          {allowManage && (
+            <>
+              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleBulkUploadFile} />
+              <button className="btn-secondary" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+                {uploading ? "Uploading..." : "Bulk Upload (CSV)"}
+              </button>
+              <button className="btn-secondary" onClick={handleExport}>Export</button>
+            </>
+          )}
           <button className="btn-gold" onClick={() => setAddOpen(true)}>+ New Candidate</button>
         </div>
       </div>
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {uploadResult && (
+        <div className="mb-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          Uploaded: {uploadResult.created} created, {uploadResult.skipped_duplicates} duplicates skipped.
+          {uploadResult.errors?.length > 0 && ` ${uploadResult.errors.length} row(s) had errors: ${uploadResult.errors.slice(0, 3).join("; ")}`}
+        </div>
+      )}
 
       <div className="card overflow-x-auto">
         <table className="data-table w-full">

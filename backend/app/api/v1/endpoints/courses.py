@@ -4,8 +4,11 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.deps import require_roles, get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.models.course import Course, CourseSyllabusModule, CourseSyllabusTopic
-from app.schemas.course import CourseCreate, CourseUpdate, CourseOut, SyllabusModuleIn, SyllabusModuleOut
+from app.models.course import Course, CourseMaterial, CourseSyllabusModule, CourseSyllabusTopic
+from app.schemas.course import (
+    CourseCreate, CourseUpdate, CourseOut, SyllabusModuleIn, SyllabusModuleOut,
+    CourseMaterialCreate, CourseMaterialOut,
+)
 from app.services.audit import log_action
 from app.services.codegen import next_code
 
@@ -106,3 +109,34 @@ def set_syllabus(course_id: int, modules: list[SyllabusModuleIn], db: Session = 
     log_action(db, user_id=user.id, action="update", module="course_syllabus", record_id=course_id)
     db.commit()
     return get_syllabus(course_id, db, user)
+
+
+@router.get("/{course_id}/materials", response_model=list[CourseMaterialOut])
+def list_materials(course_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    return db.query(CourseMaterial).filter(CourseMaterial.course_id == course_id).order_by(CourseMaterial.uploaded_at.desc()).all()
+
+
+@router.post("/{course_id}/materials", response_model=CourseMaterialOut)
+def add_material(course_id: int, payload: CourseMaterialCreate, db: Session = Depends(get_db), user: User = Depends(require_roles(*MANAGE_ROLES))):
+    course = db.get(Course, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    if not payload.file_path and not payload.external_link:
+        raise HTTPException(status_code=400, detail="Either file_path or external_link is required")
+    material = CourseMaterial(course_id=course_id, uploaded_by=user.id, **payload.model_dump())
+    db.add(material)
+    log_action(db, user_id=user.id, action="create", module="course_materials", record_id=course_id)
+    db.commit()
+    db.refresh(material)
+    return material
+
+
+@router.delete("/{course_id}/materials/{material_id}")
+def delete_material(course_id: int, material_id: int, db: Session = Depends(get_db), user: User = Depends(require_roles(*MANAGE_ROLES))):
+    material = db.get(CourseMaterial, material_id)
+    if not material or material.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Material not found")
+    db.delete(material)
+    log_action(db, user_id=user.id, action="delete", module="course_materials", record_id=material_id)
+    db.commit()
+    return {"detail": "Material deleted"}

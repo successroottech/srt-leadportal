@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
+import { exportCsv } from "../../utils/exportCsv";
 import Modal from "../../components/Modal";
 
 const STATUS_OPTIONS = [
@@ -151,6 +152,23 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
     }
   }
 
+  function handleExport() {
+    exportCsv(
+      visibleLeads,
+      [
+        { key: "name", label: "Name" },
+        { key: "mobile", label: "Mobile" },
+        { key: "email", label: "Email" },
+        { key: "lead_type", label: "Type" },
+        { key: "source", label: "Source" },
+        { key: "status", label: "Status" },
+        { key: "follow_up_date", label: "Follow-up Date" },
+        { key: "remarks", label: "Remarks" },
+      ],
+      "leads"
+    );
+  }
+
   async function submitConvert(e) {
     e.preventDefault();
     try {
@@ -167,8 +185,8 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">{todayOnly ? "Today's Follow-ups" : "Leads"}</h1>
-        <div className="flex items-center gap-2">
-          <select className="input !w-40" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+        <div className="flex flex-wrap items-center gap-2">
+          <select className="input w-full sm:!w-40" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
             <option value="">All lead types</option>
             {LEAD_TYPE_OPTIONS.map((t) => (
               <option key={t} value={t}>
@@ -176,7 +194,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
               </option>
             ))}
           </select>
-          <select className="input !w-44" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select className="input w-full sm:!w-44" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -184,10 +202,15 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
               </option>
             ))}
           </select>
-          <input className="input !w-48" placeholder="Search name/mobile" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} />
+          <input className="input w-full sm:!w-48" placeholder="Search name/mobile" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} />
           <button className="btn-secondary" onClick={load}>
             Search
           </button>
+          {allowManage && (
+            <button className="btn-secondary" onClick={handleExport}>
+              Export
+            </button>
+          )}
           <button className="btn-gold" onClick={() => setAddOpen(true)}>
             + New Lead
           </button>
@@ -322,7 +345,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="label">Follow-up Date</label>
                   <input className="input" type="date" value={followupForm.followup_date} onChange={(e) => setFollowupForm({ ...followupForm, followup_date: e.target.value })} />
@@ -378,7 +401,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
 
       <Modal open={!!convertLead} title={`Convert to Student: ${convertLead?.name || ""}`} onClose={() => setConvertLead(null)}>
         <form onSubmit={submitConvert} className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="label">Total Course Fee</label>
               <input className="input" type="number" value={convertForm.total_course_fee} onChange={(e) => setConvertForm({ ...convertForm, total_course_fee: e.target.valueAsNumber })} />

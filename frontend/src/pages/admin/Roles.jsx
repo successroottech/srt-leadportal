@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage } from "../../api/client";
+import { exportCsv } from "../../utils/exportCsv";
 import Modal from "../../components/Modal";
 
 const MODULES = [
@@ -16,6 +17,8 @@ function emptyPermissions() {
 export default function Roles() {
   const [roles, setRoles] = useState([]);
   const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
@@ -25,7 +28,10 @@ export default function Roles() {
 
   async function load() {
     try {
-      const { data } = await api.get("/roles");
+      const params = {};
+      if (statusFilter) params.is_active = statusFilter === "active";
+      if (search) params.search = search;
+      const { data } = await api.get("/roles", { params });
       setRoles(data);
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -34,7 +40,21 @@ export default function Roles() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
+
+  function handleExport() {
+    exportCsv(
+      roles,
+      [
+        { key: "name", label: "Name" },
+        { key: "description", label: "Description" },
+        { key: (r) => (r.is_system ? "Yes" : "No"), label: "System" },
+        { key: (r) => (r.is_active ? "Active" : "Inactive"), label: "Status" },
+      ],
+      "roles"
+    );
+  }
 
   function openCreate() {
     setEditing(null);
@@ -100,11 +120,21 @@ export default function Roles() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">Roles & Permissions</h1>
-        <button className="btn-gold" onClick={openCreate}>
-          + Add Role
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <select className="input w-full sm:!w-36" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <input className="input w-full sm:!w-48" placeholder="Search name" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} />
+          <button className="btn-secondary" onClick={load}>Search</button>
+          <button className="btn-secondary" onClick={handleExport}>Export</button>
+          <button className="btn-gold" onClick={openCreate}>
+            + Add Role
+          </button>
+        </div>
       </div>
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
       <div className="card overflow-x-auto">

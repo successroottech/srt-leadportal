@@ -30,7 +30,7 @@ export default function NotificationsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">Notifications</h1>
         <button className="btn-secondary" onClick={markAll}>Mark all as read</button>
       </div>

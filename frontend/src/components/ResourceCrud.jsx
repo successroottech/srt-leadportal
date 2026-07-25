@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage } from "../api/client";
+import { exportCsv } from "../utils/exportCsv";
 import Modal from "./Modal";
 
 /**
@@ -18,6 +19,7 @@ export default function ResourceCrud({
   canDelete = true,
   extraActions,
   toggleActiveField,
+  exportFilename,
 }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,9 +106,9 @@ export default function ResourceCrud({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">{title}</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
-            className="input !w-56"
+            className="input w-full sm:!w-56"
             placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -115,6 +117,14 @@ export default function ResourceCrud({
           <button className="btn-secondary" onClick={load}>
             Search
           </button>
+          {exportFilename && (
+            <button
+              className="btn-secondary"
+              onClick={() => exportCsv(rows, columns.map((c) => ({ key: c.key, label: c.label })), exportFilename)}
+            >
+              Export
+            </button>
+          )}
           {canCreate && (
             <button className="btn-gold" onClick={openCreate}>
               + Add

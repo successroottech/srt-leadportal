@@ -45,9 +45,16 @@ export default function MyCourse() {
               <h2 className="font-semibold text-navy-900 mb-2">{moduleName}</h2>
               <ul className="space-y-1 text-sm">
                 {items.map((t) => (
-                  <li key={t.id} className="flex items-center justify-between">
+                  <li key={t.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <span>{t.topic_name}</span>
-                    <span className={`badge ${STATUS_COLORS[t.status]}`}>{t.status.replace("_", " ")}</span>
+                    <span className="flex items-center gap-2">
+                      {t.status === "completed" && t.actual_completion_date ? (
+                        <span className="text-xs text-slate-400">Completed {t.actual_completion_date}</span>
+                      ) : t.planned_date ? (
+                        <span className="text-xs text-slate-400">Scheduled {t.planned_date}</span>
+                      ) : null}
+                      <span className={`badge ${STATUS_COLORS[t.status]}`}>{t.status.replace("_", " ")}</span>
+                    </span>
                   </li>
                 ))}
               </ul>

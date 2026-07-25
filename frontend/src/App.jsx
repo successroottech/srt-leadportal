@@ -15,6 +15,9 @@ import AdminAttendance from "./pages/admin/Attendance";
 import LeaveApprovals from "./pages/admin/LeaveApprovals";
 import FeedbackAdmin from "./pages/admin/Feedback";
 import AuditLogs from "./pages/admin/AuditLogs";
+import LeadsDashboard from "./pages/admin/LeadsDashboard";
+import BatchDashboard from "./pages/admin/BatchDashboard";
+import DailyFollowupPage from "./pages/shared/DailyFollowupPage";
 
 import HrDashboard from "./pages/hr/Dashboard";
 
@@ -56,10 +59,13 @@ export default function App() {
               <Route path="/admin/roles" element={<Roles />} />
               <Route path="/admin/staff" element={<AdminStaff />} />
               <Route path="/admin/leads" element={<LeadsPage allowManage />} />
+              <Route path="/admin/leads-dashboard" element={<LeadsDashboard />} />
               <Route path="/admin/candidates" element={<CandidatesPage allowManage />} />
               <Route path="/admin/students" element={<StudentsPage />} />
               <Route path="/admin/courses" element={<Courses />} />
               <Route path="/admin/batches" element={<BatchesPage allowManage />} />
+              <Route path="/admin/batch-dashboard" element={<BatchDashboard />} />
+              <Route path="/admin/daily-followup" element={<DailyFollowupPage allowManage />} />
               <Route path="/admin/attendance" element={<AdminAttendance />} />
               <Route path="/admin/fees" element={<AdminFees />} />
               <Route path="/admin/expenses" element={<AdminExpenses />} />
@@ -99,6 +105,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/trainer" element={<TrainerDashboard />} />
               <Route path="/trainer/batches" element={<BatchesPage />} />
+              <Route path="/trainer/daily-followup" element={<DailyFollowupPage allowManage />} />
               <Route path="/trainer/attendance" element={<StaffAttendanceSelf />} />
               <Route path="/trainer/leave" element={<StaffLeaveSelf />} />
               <Route path="/trainer/notifications" element={<NotificationsPage />} />

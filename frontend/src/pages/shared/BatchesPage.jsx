@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage } from "../../api/client";
+import { exportCsv } from "../../utils/exportCsv";
 import Modal from "../../components/Modal";
 
 const MODES = ["offline", "online", "hybrid"];
 const STATUSES = ["upcoming", "active", "on_hold", "completed", "cancelled"];
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export default function BatchesPage({ allowManage = false }) {
   const [rows, setRows] = useState([]);
@@ -13,7 +18,10 @@ export default function BatchesPage({ allowManage = false }) {
   const [loading, setLoading] = useState(true);
 
   const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ name: "", course_id: "", trainer_id: "", start_date: "", batch_mode: "offline", location: "" });
+  const [addForm, setAddForm] = useState({
+    name: "", course_id: "", trainer_id: "", start_date: "", expected_completion_date: "",
+    batch_start_time: "", batch_end_time: "", class_days: "", batch_mode: "offline", location: "",
+  });
 
   const [detailBatch, setDetailBatch] = useState(null);
   const [topics, setTopics] = useState([]);
@@ -48,7 +56,10 @@ export default function BatchesPage({ allowManage = false }) {
     try {
       await api.post("/batches", { ...addForm, trainer_id: addForm.trainer_id || null });
       setAddOpen(false);
-      setAddForm({ name: "", course_id: "", trainer_id: "", start_date: "", batch_mode: "offline", location: "" });
+      setAddForm({
+        name: "", course_id: "", trainer_id: "", start_date: "", expected_completion_date: "",
+        batch_start_time: "", batch_end_time: "", class_days: "", batch_mode: "offline", location: "",
+      });
       await load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -98,7 +109,27 @@ export default function BatchesPage({ allowManage = false }) {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">{allowManage ? "Batches" : "My Batches"}</h1>
-        {allowManage && <button className="btn-gold" onClick={() => setAddOpen(true)}>+ New Batch</button>}
+        {allowManage && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="btn-secondary"
+              onClick={() =>
+                exportCsv(
+                  rows,
+                  [
+                    { key: "batch_code", label: "Code" }, { key: "name", label: "Name" }, { key: "batch_mode", label: "Mode" },
+                    { key: "start_date", label: "Start Date" }, { key: "expected_completion_date", label: "Expected Completion" },
+                    { key: "batch_start_time", label: "Start Time" }, { key: "batch_end_time", label: "End Time" }, { key: "status", label: "Status" },
+                  ],
+                  "batches"
+                )
+              }
+            >
+              Export
+            </button>
+            <button className="btn-gold" onClick={() => setAddOpen(true)}>+ New Batch</button>
+          </div>
+        )}
       </div>
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
@@ -157,7 +188,15 @@ export default function BatchesPage({ allowManage = false }) {
               {trainers.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
             </select>
           </div>
-          <div><label className="label">Start Date</label><input className="input" type="date" value={addForm.start_date} onChange={(e) => setAddForm({ ...addForm, start_date: e.target.value })} /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div><label className="label">Start Date</label><input className="input" type="date" value={addForm.start_date} onChange={(e) => setAddForm({ ...addForm, start_date: e.target.value })} /></div>
+            <div><label className="label">Expected Completion</label><input className="input" type="date" value={addForm.expected_completion_date} onChange={(e) => setAddForm({ ...addForm, expected_completion_date: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div><label className="label">Batch Start Time</label><input className="input" type="time" value={addForm.batch_start_time} onChange={(e) => setAddForm({ ...addForm, batch_start_time: e.target.value })} /></div>
+            <div><label className="label">Batch End Time</label><input className="input" type="time" value={addForm.batch_end_time} onChange={(e) => setAddForm({ ...addForm, batch_end_time: e.target.value })} /></div>
+          </div>
+          <div><label className="label">Class Days</label><input className="input" placeholder="e.g. Mon,Wed,Fri" value={addForm.class_days} onChange={(e) => setAddForm({ ...addForm, class_days: e.target.value })} /></div>
           <div>
             <label className="label">Mode</label>
             <select className="input" value={addForm.batch_mode} onChange={(e) => setAddForm({ ...addForm, batch_mode: e.target.value })}>
@@ -171,7 +210,7 @@ export default function BatchesPage({ allowManage = false }) {
 
       <Modal open={!!detailBatch} title={`Batch: ${detailBatch?.name || ""}`} onClose={() => setDetailBatch(null)} wide>
         {progress && (
-          <div className="mb-3 grid grid-cols-4 gap-2 text-center text-xs">
+          <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
             <div className="card p-2"><p className="font-bold text-lg">{progress.total_topics}</p><p>Total Topics</p></div>
             <div className="card p-2"><p className="font-bold text-lg text-emerald-600">{progress.completed_topics}</p><p>Completed</p></div>
             <div className="card p-2"><p className="font-bold text-lg text-amber-600">{progress.pending_topics}</p><p>Pending</p></div>
@@ -187,19 +226,34 @@ export default function BatchesPage({ allowManage = false }) {
         <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Syllabus Progress</p>
         <div className="max-h-64 overflow-y-auto space-y-1">
           {topics.map((t) => (
-            <div key={t.id} className="flex items-center justify-between text-sm bg-slate-50 rounded px-2 py-1">
+            <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 text-sm bg-slate-50 rounded px-2 py-1">
               <span>{t.module_name} — {t.topic_name}</span>
-              <select
-                className="input !w-36 !py-1 !text-xs"
-                value={t.status}
-                onChange={(e) => updateTopic(t, { status: e.target.value, completion_percentage: e.target.value === "completed" ? 100 : t.completion_percentage })}
-              >
-                <option value="not_started">not started</option>
-                <option value="in_progress">in progress</option>
-                <option value="completed">completed</option>
-                <option value="rescheduled">rescheduled</option>
-                <option value="skipped">skipped</option>
-              </select>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  className="input !w-36 !py-1 !text-xs"
+                  value={t.actual_completion_date || ""}
+                  onChange={(e) => updateTopic(t, { actual_completion_date: e.target.value || null })}
+                  title="Completion date"
+                />
+                <select
+                  className="input !w-36 !py-1 !text-xs"
+                  value={t.status}
+                  onChange={(e) =>
+                    updateTopic(t, {
+                      status: e.target.value,
+                      completion_percentage: e.target.value === "completed" ? 100 : t.completion_percentage,
+                      actual_completion_date: e.target.value === "completed" ? (t.actual_completion_date || todayStr()) : t.actual_completion_date,
+                    })
+                  }
+                >
+                  <option value="not_started">not started</option>
+                  <option value="in_progress">in progress</option>
+                  <option value="completed">completed</option>
+                  <option value="rescheduled">rescheduled</option>
+                  <option value="skipped">skipped</option>
+                </select>
+              </div>
             </div>
           ))}
         </div>

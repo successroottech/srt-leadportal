@@ -46,7 +46,7 @@ export default function StaffLeaveSelf({ studentMode = false }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold text-navy-900">Leave & Permission</h1>
         <button className="btn-gold" onClick={() => setOpen(true)}>+ Apply</button>
       </div>
@@ -100,7 +100,7 @@ export default function StaffLeaveSelf({ studentMode = false }) {
               </select>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div><label className="label">Start Date</label><input className="input" type="date" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
             <div><label className="label">End Date</label><input className="input" type="date" required value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></div>
           </div>
