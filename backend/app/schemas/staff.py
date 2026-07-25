@@ -1,11 +1,13 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
+
+from app.schemas.common import OptionalEmail
 
 
 class StaffCreate(BaseModel):
     name: str
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     mobile: str | None = None
     alt_mobile: str | None = None
     password: str
@@ -19,7 +21,7 @@ class StaffCreate(BaseModel):
 
 class StaffUpdate(BaseModel):
     name: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     mobile: str | None = None
     alt_mobile: str | None = None
     role_id: int | None = None

@@ -1,13 +1,15 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
+
+from app.schemas.common import OptionalEmail
 
 
 class StudentCreate(BaseModel):
     name: str
     mobile: str
     alt_mobile: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     dob: date | None = None
     gender: str | None = None
     address: str | None = None
@@ -33,7 +35,7 @@ class StudentUpdate(BaseModel):
     name: str | None = None
     mobile: str | None = None
     alt_mobile: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     dob: date | None = None
     gender: str | None = None
     address: str | None = None

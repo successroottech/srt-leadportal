@@ -30,6 +30,9 @@ export function apiErrorMessage(err) {
   const detail = err?.response?.data?.detail;
   if (!detail) return "Something went wrong. Please try again.";
   if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d) => d.msg || JSON.stringify(d)).join(", ");
+  }
   if (typeof detail === "object") {
     if (detail.message) return detail.message;
     try {
@@ -37,9 +40,6 @@ export function apiErrorMessage(err) {
     } catch {
       return "Something went wrong. Please try again.";
     }
-  }
-  if (Array.isArray(detail)) {
-    return detail.map((d) => d.msg || JSON.stringify(d)).join(", ");
   }
   return "Something went wrong. Please try again.";
 }

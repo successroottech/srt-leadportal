@@ -1,13 +1,15 @@
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
+
+from app.schemas.common import OptionalEmail
 
 
 class LeadCreate(BaseModel):
     name: str
     mobile: str
     alt_mobile: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     lead_type: str = "course"
     interested_course_id: int | None = None
     source: str = "other"
@@ -20,7 +22,7 @@ class LeadCreate(BaseModel):
 class LeadUpdate(BaseModel):
     name: str | None = None
     alt_mobile: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     lead_type: str | None = None
     interested_course_id: int | None = None
     source: str | None = None
