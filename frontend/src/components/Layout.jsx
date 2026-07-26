@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { api, apiErrorMessage } from "../api/client";
@@ -24,14 +24,25 @@ export default function Layout() {
   const { user, logout, refreshMe } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
+  const location = useLocation();
   const [unread, setUnread] = useState(0);
   const [chatUnread, setChatUnread] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef(null);
+  const prevChatUnreadRef = useRef(null);
+  const locationRef = useRef(location);
+  locationRef.current = location;
 
   const items = NAV_BY_ROLE[user?.role] || [];
   const hasChat = user?.role !== "student";
+
+  useEffect(() => {
+    if (!hasChat) return;
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, [hasChat]);
 
   useEffect(() => {
     let active = true;
@@ -57,7 +68,26 @@ export default function Layout() {
     async function load() {
       try {
         const { data } = await api.get("/chat/unread-count");
-        if (active) setChatUnread(data.count);
+        if (!active) return;
+        const onChatPage = locationRef.current.pathname.endsWith("/chat");
+        const shouldNotify =
+          prevChatUnreadRef.current !== null &&
+          data.count > prevChatUnreadRef.current &&
+          (document.hidden || !onChatPage) &&
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted";
+        if (shouldNotify) {
+          const n = new Notification("New chat message", {
+            body: "You have unread messages in the SRT Portal chat.",
+            tag: "srt-chat-unread",
+          });
+          n.onclick = () => {
+            window.focus();
+            navigate(`/${user?.role}/chat`);
+          };
+        }
+        prevChatUnreadRef.current = data.count;
+        setChatUnread(data.count);
       } catch {
         /* ignore */
       }
@@ -68,6 +98,7 @@ export default function Layout() {
       active = false;
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasChat]);
 
   useEffect(() => {
