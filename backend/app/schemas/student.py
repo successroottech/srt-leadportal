@@ -51,8 +51,10 @@ class StudentUpdate(BaseModel):
     qualification: str | None = None
     college_name: str | None = None
     graduation_year: int | None = None
+    admission_type: str | None = None
     course_id: int | None = None
     batch_id: int | None = None
+    joining_date: date | None = None
     expected_completion_date: date | None = None
     actual_completion_date: date | None = None
     course_status: str | None = None

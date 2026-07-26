@@ -10,14 +10,6 @@ const ADMISSION_TYPES = [
 ];
 const COURSE_STATUSES = ["ongoing", "completed", "dropped", "on_hold"];
 const PLACEMENT_STATUSES = ["not_applicable", "pending", "in_progress", "placed", "not_placed"];
-const EMI_QUICK_PICKS = [
-  { value: 0, label: "Full" },
-  { value: 2, label: "2 EMIs" },
-  { value: 3, label: "3 EMIs" },
-  { value: 4, label: "4 EMIs" },
-  { value: 5, label: "5 EMIs" },
-  { value: 6, label: "6 EMIs" },
-];
 const PAYMENT_MODES = ["cash", "upi", "bank_transfer", "debit_card", "credit_card", "cheque", "online"];
 
 const FEE_STATUS_LABELS = {
@@ -42,11 +34,8 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
 
   const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({
-    name: "", mobile: "", email: "", admission_type: "course", course_id: "", batch_id: "",
-    expected_completion_date: "",
-    total_course_fee: 0, discount: 0, initial_payment: 0, number_of_emis: 0, password: "",
-  });
+  const [addForm, setAddForm] = useState({ name: "", mobile: "", course_id: "", total_course_fee: 0 });
+  const [addExpectedCompletion, setAddExpectedCompletion] = useState("");
 
   const [transferRow, setTransferRow] = useState(null);
   const [transferBatch, setTransferBatch] = useState("");
@@ -80,13 +69,33 @@ export default function StudentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function computeExpectedCompletion(courseId) {
+    const course = courses.find((c) => c.id === Number(courseId));
+    if (!course || !course.duration_weeks) return "";
+    const d = new Date();
+    d.setDate(d.getDate() + course.duration_weeks * 7);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function handleAddCourseChange(courseId) {
+    setAddForm({ ...addForm, course_id: courseId });
+    setAddExpectedCompletion(computeExpectedCompletion(courseId));
+  }
+
   async function submitAdd(e) {
     e.preventDefault();
     setError("");
     try {
-      await api.post("/students", { ...addForm, course_id: addForm.course_id || null, batch_id: addForm.batch_id || null, create_login: true });
+      await api.post("/students", {
+        ...addForm,
+        course_id: addForm.course_id || null,
+        joining_date: new Date().toISOString().slice(0, 10),
+        expected_completion_date: addExpectedCompletion || null,
+        create_login: true,
+      });
       setAddOpen(false);
-      setAddForm({ name: "", mobile: "", email: "", admission_type: "course", course_id: "", batch_id: "", expected_completion_date: "", total_course_fee: 0, discount: 0, initial_payment: 0, number_of_emis: 0, password: "" });
+      setAddForm({ name: "", mobile: "", course_id: "", total_course_fee: 0 });
+      setAddExpectedCompletion("");
       await load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -107,6 +116,20 @@ export default function StudentsPage() {
   function openEdit(row) {
     setEditRow(row);
     setEditForm({
+      name: row.name || "",
+      mobile: row.mobile || "",
+      alt_mobile: row.alt_mobile || "",
+      email: row.email || "",
+      dob: row.dob || "",
+      gender: row.gender || "",
+      address: row.address || "",
+      qualification: row.qualification || "",
+      college_name: row.college_name || "",
+      graduation_year: row.graduation_year || "",
+      admission_type: row.admission_type || "course",
+      course_id: row.course_id || "",
+      batch_id: row.batch_id || "",
+      joining_date: row.joining_date || "",
       course_status: row.course_status || "ongoing",
       placement_status: row.placement_status || "not_applicable",
       expected_completion_date: row.expected_completion_date || "",
@@ -121,7 +144,11 @@ export default function StudentsPage() {
   async function submitEdit(e) {
     e.preventDefault();
     try {
-      await api.put(`/students/${editRow.id}`, editForm);
+      const payload = { ...editForm };
+      for (const key of ["dob", "graduation_year", "course_id", "batch_id", "joining_date", "expected_completion_date", "actual_completion_date", "job_joining_date", "salary_package"]) {
+        if (payload[key] === "" || Number.isNaN(payload[key])) payload[key] = null;
+      }
+      await api.put(`/students/${editRow.id}`, payload);
       setEditRow(null);
       await load();
     } catch (err) {
@@ -272,62 +299,27 @@ export default function StudentsPage() {
         </>
       )}
 
-      <Modal open={addOpen} title="Add Student" onClose={() => setAddOpen(false)} wide error={error}>
-        <form onSubmit={submitAdd} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="sm:col-span-2"><label className="label">Name</label><input className="input" required value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} /></div>
+      <Modal open={addOpen} title="Add Student" onClose={() => setAddOpen(false)} error={error}>
+        <form onSubmit={submitAdd} className="space-y-3">
+          <div><label className="label">Name</label><input className="input" required value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} /></div>
           <div><label className="label">Mobile</label><input className="input" required value={addForm.mobile} onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })} /></div>
-          <div><label className="label">Email</label><input className="input" type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} /></div>
-          <div>
-            <label className="label">Admission Type</label>
-            <select className="input" value={addForm.admission_type} onChange={(e) => setAddForm({ ...addForm, admission_type: e.target.value })}>
-              {ADMISSION_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
-            </select>
-          </div>
           <div>
             <label className="label">Course</label>
-            <select className="input" value={addForm.course_id} onChange={(e) => setAddForm({ ...addForm, course_id: e.target.value })}>
+            <select className="input" required value={addForm.course_id} onChange={(e) => handleAddCourseChange(e.target.value)}>
               <option value="">Select course</option>
               {courses.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           </div>
-          <div>
-            <label className="label">Batch</label>
-            <select className="input" value={addForm.batch_id} onChange={(e) => setAddForm({ ...addForm, batch_id: e.target.value })}>
-              <option value="">Select batch</option>
-              {batches.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
-            </select>
-          </div>
-          <div><label className="label">Expected Completion Date</label><input className="input" type="date" value={addForm.expected_completion_date} onChange={(e) => setAddForm({ ...addForm, expected_completion_date: e.target.value })} /></div>
-          <div><label className="label">Total Course Fee</label><input className="input" type="number" value={addForm.total_course_fee} onChange={(e) => setAddForm({ ...addForm, total_course_fee: e.target.valueAsNumber })} /></div>
-          <div><label className="label">Discount</label><input className="input" type="number" value={addForm.discount} onChange={(e) => setAddForm({ ...addForm, discount: e.target.valueAsNumber })} /></div>
-          <div><label className="label">Initial Payment</label><input className="input" type="number" value={addForm.initial_payment} onChange={(e) => setAddForm({ ...addForm, initial_payment: e.target.valueAsNumber })} /></div>
-          <div className="sm:col-span-2">
-            <label className="label">Balance Payment Plan</label>
-            <div className="flex flex-wrap items-center gap-2">
-              {EMI_QUICK_PICKS.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  className={addForm.number_of_emis === o.value ? "btn-primary !py-1 !text-xs" : "btn-secondary !py-1 !text-xs"}
-                  onClick={() => setAddForm({ ...addForm, number_of_emis: o.value })}
-                >
-                  {o.label}
-                </button>
-              ))}
-              <input
-                className="input !w-28"
-                type="number"
-                min="0"
-                max="12"
-                placeholder="Custom"
-                value={addForm.number_of_emis}
-                onChange={(e) => setAddForm({ ...addForm, number_of_emis: e.target.valueAsNumber || 0 })}
-              />
-            </div>
-            <p className="mt-1 text-xs text-slate-400">0 = pay in full now. Otherwise choose any number of monthly EMIs (up to 12).</p>
-          </div>
-          <div className="sm:col-span-2"><label className="label">Student Login Password</label><input className="input" value={addForm.password} onChange={(e) => setAddForm({ ...addForm, password: e.target.value })} placeholder="Default: Welcome@123" /></div>
-          <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
+          <div><label className="label">Total Course Fee</label><input className="input" type="number" required value={addForm.total_course_fee} onChange={(e) => setAddForm({ ...addForm, total_course_fee: e.target.valueAsNumber })} /></div>
+          {addExpectedCompletion && (
+            <p className="text-xs text-slate-500">
+              Expected course completion: <strong className="text-navy-900">{addExpectedCompletion}</strong> (admission date + course duration)
+            </p>
+          )}
+          <p className="text-xs text-slate-400">
+            A student login is created automatically (default password Welcome@123). Everything else — email, batch, EMI plan, job details — can be filled in later from Edit.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setAddOpen(false)}>Cancel</button>
             <button type="submit" className="btn-primary">Save Student</button>
           </div>
@@ -346,6 +338,45 @@ export default function StudentsPage() {
 
       <Modal open={!!editRow} title={`Edit: ${editRow?.name || ""}`} onClose={() => setEditRow(null)} wide error={error}>
         <form onSubmit={submitEdit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label className="label">Name</label><input className="input" required value={editForm.name || ""} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
+          <div><label className="label">Mobile</label><input className="input" required value={editForm.mobile || ""} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
+          <div><label className="label">Alt Mobile</label><input className="input" value={editForm.alt_mobile || ""} onChange={(e) => setEditForm({ ...editForm, alt_mobile: e.target.value })} /></div>
+          <div><label className="label">Email</label><input className="input" type="email" value={editForm.email || ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
+          <div><label className="label">Date of Birth</label><input className="input" type="date" value={editForm.dob || ""} onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })} /></div>
+          <div>
+            <label className="label">Gender</label>
+            <select className="input" value={editForm.gender || ""} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+              <option value="">Select</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div className="sm:col-span-2"><label className="label">Address</label><input className="input" value={editForm.address || ""} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} /></div>
+          <div><label className="label">Qualification</label><input className="input" value={editForm.qualification || ""} onChange={(e) => setEditForm({ ...editForm, qualification: e.target.value })} /></div>
+          <div><label className="label">College Name</label><input className="input" value={editForm.college_name || ""} onChange={(e) => setEditForm({ ...editForm, college_name: e.target.value })} /></div>
+          <div><label className="label">Graduation Year</label><input className="input" type="number" value={editForm.graduation_year || ""} onChange={(e) => setEditForm({ ...editForm, graduation_year: e.target.valueAsNumber })} /></div>
+          <div>
+            <label className="label">Admission Type</label>
+            <select className="input" value={editForm.admission_type || "course"} onChange={(e) => setEditForm({ ...editForm, admission_type: e.target.value })}>
+              {ADMISSION_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Course</label>
+            <select className="input" value={editForm.course_id || ""} onChange={(e) => setEditForm({ ...editForm, course_id: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">Not set</option>
+              {courses.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Batch</label>
+            <select className="input" value={editForm.batch_id || ""} onChange={(e) => setEditForm({ ...editForm, batch_id: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">Not set</option>
+              {batches.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
+            </select>
+          </div>
+          <div><label className="label">Joining Date</label><input className="input" type="date" value={editForm.joining_date || ""} onChange={(e) => setEditForm({ ...editForm, joining_date: e.target.value })} /></div>
           <div>
             <label className="label">Course Status</label>
             <select className="input" value={editForm.course_status} onChange={(e) => setEditForm({ ...editForm, course_status: e.target.value })}>

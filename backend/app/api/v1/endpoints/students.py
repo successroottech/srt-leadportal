@@ -145,6 +145,8 @@ def update_student(student_id: int, payload: StudentUpdate, db: Session = Depend
     student = db.get(Student, student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+    if payload.admission_type is not None and payload.admission_type not in ADMISSION_TYPES:
+        raise HTTPException(status_code=422, detail=f"admission_type must be one of {ADMISSION_TYPES}")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(student, field, value)
     log_action(db, user_id=user.id, action="update", module="students", record_id=student.id)
