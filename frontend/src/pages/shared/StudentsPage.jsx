@@ -10,11 +10,13 @@ const ADMISSION_TYPES = [
 ];
 const COURSE_STATUSES = ["ongoing", "completed", "dropped", "on_hold"];
 const PLACEMENT_STATUSES = ["not_applicable", "pending", "in_progress", "placed", "not_placed"];
-const EMI_OPTIONS = [
-  { value: 0, label: "Pay in full (no EMI)" },
+const EMI_QUICK_PICKS = [
+  { value: 0, label: "Full" },
+  { value: 2, label: "2 EMIs" },
   { value: 3, label: "3 EMIs" },
   { value: 4, label: "4 EMIs" },
   { value: 5, label: "5 EMIs" },
+  { value: 6, label: "6 EMIs" },
 ];
 const PAYMENT_MODES = ["cash", "upi", "bank_transfer", "debit_card", "credit_card", "cheque", "online"];
 
@@ -270,7 +272,7 @@ export default function StudentsPage() {
         </>
       )}
 
-      <Modal open={addOpen} title="Add Student" onClose={() => setAddOpen(false)} wide>
+      <Modal open={addOpen} title="Add Student" onClose={() => setAddOpen(false)} wide error={error}>
         <form onSubmit={submitAdd} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2"><label className="label">Name</label><input className="input" required value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} /></div>
           <div><label className="label">Mobile</label><input className="input" required value={addForm.mobile} onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })} /></div>
@@ -299,11 +301,30 @@ export default function StudentsPage() {
           <div><label className="label">Total Course Fee</label><input className="input" type="number" value={addForm.total_course_fee} onChange={(e) => setAddForm({ ...addForm, total_course_fee: e.target.valueAsNumber })} /></div>
           <div><label className="label">Discount</label><input className="input" type="number" value={addForm.discount} onChange={(e) => setAddForm({ ...addForm, discount: e.target.valueAsNumber })} /></div>
           <div><label className="label">Initial Payment</label><input className="input" type="number" value={addForm.initial_payment} onChange={(e) => setAddForm({ ...addForm, initial_payment: e.target.valueAsNumber })} /></div>
-          <div>
+          <div className="sm:col-span-2">
             <label className="label">Balance Payment Plan</label>
-            <select className="input" value={addForm.number_of_emis} onChange={(e) => setAddForm({ ...addForm, number_of_emis: Number(e.target.value) })}>
-              {EMI_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              {EMI_QUICK_PICKS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  className={addForm.number_of_emis === o.value ? "btn-primary !py-1 !text-xs" : "btn-secondary !py-1 !text-xs"}
+                  onClick={() => setAddForm({ ...addForm, number_of_emis: o.value })}
+                >
+                  {o.label}
+                </button>
+              ))}
+              <input
+                className="input !w-28"
+                type="number"
+                min="0"
+                max="12"
+                placeholder="Custom"
+                value={addForm.number_of_emis}
+                onChange={(e) => setAddForm({ ...addForm, number_of_emis: e.target.valueAsNumber || 0 })}
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-400">0 = pay in full now. Otherwise choose any number of monthly EMIs (up to 12).</p>
           </div>
           <div className="sm:col-span-2"><label className="label">Student Login Password</label><input className="input" value={addForm.password} onChange={(e) => setAddForm({ ...addForm, password: e.target.value })} placeholder="Default: Welcome@123" /></div>
           <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
@@ -313,7 +334,7 @@ export default function StudentsPage() {
         </form>
       </Modal>
 
-      <Modal open={!!transferRow} title={`Transfer Batch: ${transferRow?.name || ""}`} onClose={() => setTransferRow(null)}>
+      <Modal open={!!transferRow} title={`Transfer Batch: ${transferRow?.name || ""}`} onClose={() => setTransferRow(null)} error={error}>
         <form onSubmit={submitTransfer} className="space-y-3">
           <select className="input" required value={transferBatch} onChange={(e) => setTransferBatch(e.target.value)}>
             <option value="">Select new batch</option>
@@ -323,7 +344,7 @@ export default function StudentsPage() {
         </form>
       </Modal>
 
-      <Modal open={!!editRow} title={`Edit: ${editRow?.name || ""}`} onClose={() => setEditRow(null)} wide>
+      <Modal open={!!editRow} title={`Edit: ${editRow?.name || ""}`} onClose={() => setEditRow(null)} wide error={error}>
         <form onSubmit={submitEdit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Course Status</label>
@@ -350,7 +371,7 @@ export default function StudentsPage() {
         </form>
       </Modal>
 
-      <Modal open={!!feesRow} title={`Fees: ${feesRow?.name || ""}`} onClose={() => setFeesRow(null)} wide>
+      <Modal open={!!feesRow} title={`Fees: ${feesRow?.name || ""}`} onClose={() => setFeesRow(null)} wide error={error}>
         {!feeSummary ? (
           <p className="text-sm text-slate-400">Loading...</p>
         ) : (
@@ -397,7 +418,7 @@ export default function StudentsPage() {
         )}
       </Modal>
 
-      <Modal open={!!payEmi} title={`Record Payment: EMI #${payEmi?.emi_number ?? ""}`} onClose={() => setPayEmi(null)}>
+      <Modal open={!!payEmi} title={`Record Payment: EMI #${payEmi?.emi_number ?? ""}`} onClose={() => setPayEmi(null)} error={error}>
         <form onSubmit={submitPay} className="space-y-3">
           <div><label className="label">Amount</label><input className="input" type="number" required value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.valueAsNumber })} /></div>
           <div>

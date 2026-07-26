@@ -222,7 +222,7 @@ export default function DailyFollowupPage({ allowManage = false }) {
         </>
       )}
 
-      <Modal open={!!attendanceBatch} title={`Attendance: ${attendanceBatch?.name || ""}`} onClose={() => setAttendanceBatch(null)} wide>
+      <Modal open={!!attendanceBatch} title={`Attendance: ${attendanceBatch?.name || ""}`} onClose={() => setAttendanceBatch(null)} wide error={error}>
         <form onSubmit={submitAttendance} className="space-y-3">
           <div className="max-h-80 overflow-y-auto space-y-1">
             {students.length === 0 ? (

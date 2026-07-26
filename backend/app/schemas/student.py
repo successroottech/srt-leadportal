@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.schemas.common import OptionalEmail
 
-ALLOWED_EMI_COUNTS = (0, 3, 4, 5)
+MAX_EMI_COUNT = 12
 
 
 class StudentCreate(BaseModel):
@@ -35,8 +35,8 @@ class StudentCreate(BaseModel):
     @field_validator("number_of_emis")
     @classmethod
     def validate_emi_count(cls, value: int) -> int:
-        if value not in ALLOWED_EMI_COUNTS:
-            raise ValueError("number_of_emis must be 0 (pay in full) or between 3 and 5")
+        if value < 0 or value > MAX_EMI_COUNT:
+            raise ValueError(f"number_of_emis must be 0 (pay in full) or between 1 and {MAX_EMI_COUNT}")
         return value
 
 

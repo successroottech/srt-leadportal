@@ -77,7 +77,7 @@ export default function FeedbackAdmin() {
         </table>
       </div>
 
-      <Modal open={!!respondRow} title="Respond to Feedback" onClose={() => setRespondRow(null)}>
+      <Modal open={!!respondRow} title="Respond to Feedback" onClose={() => setRespondRow(null)} error={error}>
         {respondRow && (
           <div className="mb-3 text-sm text-slate-600">
             <p className="font-medium">{respondRow.subject}</p>

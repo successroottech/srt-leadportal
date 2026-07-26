@@ -209,7 +209,7 @@ export default function ResourceCrud({
         </>
       )}
 
-      <Modal open={modalOpen} title={editing ? `Edit ${title}` : `Add ${title}`} onClose={() => setModalOpen(false)}>
+      <Modal open={modalOpen} title={editing ? `Edit ${title}` : `Add ${title}`} onClose={() => setModalOpen(false)} error={error}>
         <form onSubmit={handleSave} className="space-y-3">
           {formFields.map((f) => (
             <div key={f.name}>

@@ -1,4 +1,4 @@
-export default function Modal({ open, title, onClose, children, wide = false }) {
+export default function Modal({ open, title, onClose, children, wide = false, error = "" }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -9,7 +9,10 @@ export default function Modal({ open, title, onClose, children, wide = false }) 
             &times;
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-5">
+          {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+          {children}
+        </div>
       </div>
     </div>
   );

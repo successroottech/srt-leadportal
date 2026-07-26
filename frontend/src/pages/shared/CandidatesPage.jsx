@@ -230,7 +230,7 @@ export default function CandidatesPage({ allowManage = false }) {
         </>
       )}
 
-      <Modal open={addOpen} title="New Candidate" onClose={() => setAddOpen(false)}>
+      <Modal open={addOpen} title="New Candidate" onClose={() => setAddOpen(false)} error={error}>
         <form onSubmit={submitAdd} className="space-y-3">
           <div><label className="label">Name</label><input className="input" required value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} /></div>
           <div><label className="label">Mobile</label><input className="input" required value={addForm.mobile} onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })} /></div>
@@ -246,7 +246,7 @@ export default function CandidatesPage({ allowManage = false }) {
         </form>
       </Modal>
 
-      <Modal open={!!editRow} title={`Update: ${editRow?.name || ""}`} onClose={() => setEditRow(null)}>
+      <Modal open={!!editRow} title={`Update: ${editRow?.name || ""}`} onClose={() => setEditRow(null)} error={error}>
         <form onSubmit={submitEdit} className="space-y-3">
           <div>
             <label className="label">Status</label>
@@ -260,7 +260,7 @@ export default function CandidatesPage({ allowManage = false }) {
         </form>
       </Modal>
 
-      <Modal open={!!assignRow} title={`Assign: ${assignRow?.name || ""}`} onClose={() => setAssignRow(null)}>
+      <Modal open={!!assignRow} title={`Assign: ${assignRow?.name || ""}`} onClose={() => setAssignRow(null)} error={error}>
         <form onSubmit={submitAssign} className="space-y-3">
           <select className="input" required value={assignTo} onChange={(e) => setAssignTo(e.target.value)}>
             <option value="">Select telecaller</option>
@@ -270,7 +270,7 @@ export default function CandidatesPage({ allowManage = false }) {
         </form>
       </Modal>
 
-      <Modal open={!!interviewRow} title={`Schedule Interview: ${interviewRow?.name || ""}`} onClose={() => setInterviewRow(null)}>
+      <Modal open={!!interviewRow} title={`Schedule Interview: ${interviewRow?.name || ""}`} onClose={() => setInterviewRow(null)} error={error}>
         <form onSubmit={submitInterview} className="space-y-3">
           <div><label className="label">Interview Date</label><input className="input" type="date" value={interviewForm.interview_date} onChange={(e) => setInterviewForm({ ...interviewForm, interview_date: e.target.value })} /></div>
           <div><label className="label">Company</label><input className="input" value={interviewForm.company} onChange={(e) => setInterviewForm({ ...interviewForm, company: e.target.value })} /></div>

@@ -310,7 +310,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
         </>
       )}
 
-      <Modal open={addOpen} title="New Lead" onClose={() => setAddOpen(false)}>
+      <Modal open={addOpen} title="New Lead" onClose={() => setAddOpen(false)} error={error}>
         <form onSubmit={submitAdd} className="space-y-3">
           <div>
             <label className="label">Name</label>
@@ -367,7 +367,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
         </form>
       </Modal>
 
-      <Modal open={!!detailLead} title={`Lead: ${detailLead?.name || ""}`} onClose={() => setDetailLead(null)}>
+      <Modal open={!!detailLead} title={`Lead: ${detailLead?.name || ""}`} onClose={() => setDetailLead(null)} error={error}>
         {detailLead && (
           <div>
             <div className="text-sm text-slate-600 mb-3 space-y-1">
@@ -420,7 +420,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
         )}
       </Modal>
 
-      <Modal open={!!assignLead} title={`Assign: ${assignLead?.name || ""}`} onClose={() => setAssignLead(null)}>
+      <Modal open={!!assignLead} title={`Assign: ${assignLead?.name || ""}`} onClose={() => setAssignLead(null)} error={error}>
         <form onSubmit={submitAssign} className="space-y-3">
           <div>
             <label className="label">Telecaller</label>
@@ -438,7 +438,7 @@ export default function LeadsPage({ todayOnly = false, allowManage = false }) {
         </form>
       </Modal>
 
-      <Modal open={!!convertLead} title={`Convert to Student: ${convertLead?.name || ""}`} onClose={() => setConvertLead(null)}>
+      <Modal open={!!convertLead} title={`Convert to Student: ${convertLead?.name || ""}`} onClose={() => setConvertLead(null)} error={error}>
         <form onSubmit={submitConvert} className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>

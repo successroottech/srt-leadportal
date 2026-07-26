@@ -75,7 +75,7 @@ export default function StaffLeaveSelf({ studentMode = false }) {
         </table>
       </div>
 
-      <Modal open={open} title="Apply Leave / Permission" onClose={() => setOpen(false)}>
+      <Modal open={open} title="Apply Leave / Permission" onClose={() => setOpen(false)} error={error}>
         <form onSubmit={submit} className="space-y-3">
           <div>
             <label className="label">Kind</label>

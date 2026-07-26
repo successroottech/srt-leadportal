@@ -105,7 +105,7 @@ export default function Fees() {
         </table>
       </div>
 
-      <Modal open={!!payModal} title={`Record Payment: ${payModal?.student_name || ""}`} onClose={() => setPayModal(null)}>
+      <Modal open={!!payModal} title={`Record Payment: ${payModal?.student_name || ""}`} onClose={() => setPayModal(null)} error={error}>
         <form onSubmit={submitPayment} className="space-y-3">
           <div><label className="label">Amount</label><input className="input" type="number" required value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.valueAsNumber })} /></div>
           <div>

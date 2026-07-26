@@ -56,7 +56,7 @@ export default function MyFeedback() {
         )}
       </div>
 
-      <Modal open={open} title="Submit Feedback / Complaint" onClose={() => setOpen(false)}>
+      <Modal open={open} title="Submit Feedback / Complaint" onClose={() => setOpen(false)} error={error}>
         <form onSubmit={submit} className="space-y-3">
           <div>
             <label className="label">Type</label>

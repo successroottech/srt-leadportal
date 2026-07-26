@@ -200,7 +200,7 @@ export default function BatchesPage({ allowManage = false }) {
         </>
       )}
 
-      <Modal open={addOpen} title="New Batch" onClose={() => setAddOpen(false)}>
+      <Modal open={addOpen} title="New Batch" onClose={() => setAddOpen(false)} error={error}>
         <form onSubmit={submitAdd} className="space-y-3">
           <div><label className="label">Batch Name</label><input className="input" required value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} /></div>
           <div>
@@ -237,7 +237,7 @@ export default function BatchesPage({ allowManage = false }) {
         </form>
       </Modal>
 
-      <Modal open={!!detailBatch} title={`Batch: ${detailBatch?.name || ""}`} onClose={() => setDetailBatch(null)} wide>
+      <Modal open={!!detailBatch} title={`Batch: ${detailBatch?.name || ""}`} onClose={() => setDetailBatch(null)} wide error={error}>
         {progress && (
           <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
             <div className="card p-2"><p className="font-bold text-lg">{progress.total_topics}</p><p>Total Topics</p></div>

@@ -22,29 +22,53 @@ function fmtDay(iso) {
   return d.toLocaleDateString();
 }
 
+function initials(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase();
+}
+
+function Avatar({ name }) {
+  return (
+    <div className="flex-shrink-0 h-7 w-7 rounded-full bg-navy-100 text-navy-700 text-[11px] font-semibold flex items-center justify-center select-none">
+      {initials(name)}
+    </div>
+  );
+}
+
 function MessageBubble({ msg, isMine }) {
   return (
-    <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-2`}>
-      <div className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${isMine ? "bg-navy-900 text-white" : "bg-slate-100 text-navy-900"}`}>
+    <div className={`flex items-end gap-2 mb-2.5 ${isMine ? "justify-end" : "justify-start"}`}>
+      {!isMine && <Avatar name={msg.sender_name} />}
+      <div
+        className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
+          isMine ? "bg-navy-900 text-white rounded-br-sm" : "bg-white border border-slate-200 text-navy-900 rounded-bl-sm"
+        }`}
+      >
         {!isMine && <p className="text-xs font-semibold text-gold-600 mb-0.5">{msg.sender_name}</p>}
         {msg.message_type === "image" && msg.attachment_path && (
           <a href={msg.attachment_path} target="_blank" rel="noreferrer">
-            <img src={msg.attachment_path} alt={msg.attachment_name || "image"} className="max-w-full max-h-64 rounded mb-1 object-contain" />
+            <img src={msg.attachment_path} alt={msg.attachment_name || "image"} className="max-w-full max-h-64 rounded-lg mb-1 object-contain" />
           </a>
         )}
         {msg.message_type === "document" && msg.attachment_path && (
-          <a href={msg.attachment_path} target="_blank" rel="noreferrer" className={`flex items-center gap-2 underline ${isMine ? "text-white" : "text-navy-800"}`}>
-            📎 {msg.attachment_name || "Document"}
+          <a
+            href={msg.attachment_path}
+            target="_blank"
+            rel="noreferrer"
+            className={`flex items-center gap-2 rounded-lg px-2 py-1.5 mb-1 ${isMine ? "bg-white/10" : "bg-slate-50"} hover:underline`}
+          >
+            📎 <span className="truncate">{msg.attachment_name || "Document"}</span>
           </a>
         )}
         {msg.message_type === "voice" && msg.attachment_path && (
-          <audio controls src={msg.attachment_path} className="max-w-full" />
+          <audio controls src={msg.attachment_path} className="max-w-full" style={{ height: 32 }} />
         )}
         {msg.message_type === "video" && msg.attachment_path && (
-          <video controls src={msg.attachment_path} className="max-w-full max-h-64 rounded" />
+          <video controls src={msg.attachment_path} className="max-w-full max-h-64 rounded-lg" />
         )}
-        {msg.body && <p className="whitespace-pre-wrap break-words">{msg.body}</p>}
-        <p className={`text-[10px] mt-1 ${isMine ? "text-slate-300" : "text-slate-400"}`}>{fmtTime(msg.created_at)}</p>
+        {msg.body && <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.body}</p>}
+        <p className={`text-[10px] mt-1 text-right ${isMine ? "text-slate-300" : "text-slate-400"}`}>{fmtTime(msg.created_at)}</p>
       </div>
     </div>
   );
@@ -77,8 +101,11 @@ export default function ChatPage() {
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const lastMessageIdRef = useRef(null);
   const activeIdRef = useRef(null);
   activeIdRef.current = activeId;
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   const active = conversations.find((c) => c.id === activeId) || null;
 
@@ -109,15 +136,41 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!activeId) return;
+    lastMessageIdRef.current = null;
+    setShowJumpToLatest(false);
     loadMessages(activeId);
     api.post(`/chat/conversations/${activeId}/read`).then(loadConversations).catch(() => {});
     const poll = setInterval(() => loadMessages(activeId), 2500);
     return () => clearInterval(poll);
   }, [activeId, loadMessages, loadConversations]);
 
+  // Only auto-scroll when a genuinely new message arrives (not on every poll
+  // tick), and only if the user is already near the bottom or it's their own
+  // outgoing message — otherwise surface a "jump to latest" pill instead of
+  // yanking someone back down while they're reading older messages.
   useEffect(() => {
+    if (messages.length === 0) return;
+    const latest = messages[messages.length - 1];
+    if (latest.id === lastMessageIdRef.current) return;
+    const isFirstLoad = lastMessageIdRef.current === null;
+    lastMessageIdRef.current = latest.id;
+
+    const container = messagesContainerRef.current;
+    const nearBottom = container ? container.scrollHeight - container.scrollTop - container.clientHeight < 150 : true;
+    const isMine = latest.sender_id === user.id;
+
+    if (isFirstLoad || nearBottom || isMine) {
+      messagesEndRef.current?.scrollIntoView({ behavior: isFirstLoad ? "auto" : "smooth" });
+      setShowJumpToLatest(false);
+    } else {
+      setShowJumpToLatest(true);
+    }
+  }, [messages, user.id]);
+
+  function jumpToLatest() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    setShowJumpToLatest(false);
+  }
 
   function openConversation(id) {
     setActiveId(id);
@@ -288,11 +341,11 @@ export default function ChatPage() {
   let lastDay = null;
 
   return (
-    <div className="h-[calc(100vh-7rem)] flex flex-col">
+    <div className="h-[calc(100vh-7rem)] max-h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
       <div className="flex flex-1 min-h-0 gap-3">
         {/* Conversation list */}
-        <div className={`${activeId ? "hidden md:flex" : "flex"} w-full md:w-72 flex-col card p-0 overflow-hidden`}>
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
+        <div className={`${activeId ? "hidden md:flex" : "flex"} w-full md:w-72 min-h-0 flex-col card p-0 overflow-hidden`}>
+          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 flex-shrink-0">
             <h2 className="font-semibold text-navy-900 text-sm">Chats</h2>
             <button className="btn-gold !py-1 !px-2 !text-xs" onClick={() => { setNewChatOpen(true); setNewChatTab("direct"); }}>+ New</button>
           </div>
@@ -304,21 +357,28 @@ export default function ChatPage() {
                 <button
                   key={c.id}
                   onClick={() => openConversation(c.id)}
-                  className={`w-full text-left px-3 py-2.5 border-b border-slate-100 hover:bg-slate-50 ${activeId === c.id ? "bg-slate-100" : ""}`}
+                  className={`w-full text-left px-3 py-2.5 border-l-[3px] transition-colors ${
+                    activeId === c.id ? "border-gold-500 bg-slate-50" : "border-transparent hover:bg-slate-50"
+                  }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-sm text-navy-900 truncate">
-                      {c.type === "group" ? `👥 ${c.display_name}` : c.display_name}
-                    </span>
-                    {c.unread_count > 0 && (
-                      <span className="flex-shrink-0 rounded-full bg-red-600 text-white text-[10px] px-1.5 py-0.5 min-w-[18px] text-center">
-                        {c.unread_count}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={c.display_name} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-sm truncate ${c.unread_count > 0 ? "font-semibold text-navy-900" : "font-medium text-navy-800"}`}>
+                          {c.type === "group" ? `👥 ${c.display_name}` : c.display_name}
+                        </span>
+                        {c.unread_count > 0 && (
+                          <span className="flex-shrink-0 rounded-full bg-red-600 text-white text-[10px] px-1.5 py-0.5 min-w-[18px] text-center">
+                            {c.unread_count}
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-xs truncate ${c.unread_count > 0 ? "text-slate-600" : "text-slate-400"}`}>
+                        {c.last_message ? (c.last_message.body || `[${c.last_message.message_type}]`) : "No messages yet"}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500 truncate">
-                    {c.last_message ? (c.last_message.body || `[${c.last_message.message_type}]`) : "No messages yet"}
-                  </p>
                 </button>
               ))
             )}
@@ -326,12 +386,12 @@ export default function ChatPage() {
         </div>
 
         {/* Thread */}
-        <div className={`${activeId ? "flex" : "hidden md:flex"} flex-1 flex-col card p-0 overflow-hidden`}>
+        <div className={`${activeId ? "flex" : "hidden md:flex"} flex-1 min-h-0 flex-col card p-0 overflow-hidden`}>
           {!active ? (
             <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Select a conversation to start chatting</div>
           ) : (
             <>
-              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 flex-shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <button className="md:hidden text-slate-500" onClick={() => setActiveId(null)}>&larr;</button>
                   <span className="font-semibold text-navy-900 text-sm truncate">
@@ -345,22 +405,36 @@ export default function ChatPage() {
                 )}
               </div>
 
-              <div className="flex-1 overflow-y-auto px-3 py-3">
-                {messages.map((m) => {
-                  const showDay = fmtDay(m.created_at) !== lastDay;
-                  lastDay = fmtDay(m.created_at);
-                  return (
-                    <div key={m.id}>
-                      {showDay && <p className="text-center text-[11px] text-slate-400 my-2">{lastDay}</p>}
-                      <MessageBubble msg={m} isMine={m.sender_id === user.id} />
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
+              <div className="relative flex-1 min-h-0">
+                <div ref={messagesContainerRef} className="h-full overflow-y-auto px-3 py-3">
+                  {messages.length === 0 ? (
+                    <p className="text-center text-slate-400 text-sm py-6">No messages yet — say hello 👋</p>
+                  ) : (
+                    messages.map((m) => {
+                      const showDay = fmtDay(m.created_at) !== lastDay;
+                      lastDay = fmtDay(m.created_at);
+                      return (
+                        <div key={m.id}>
+                          {showDay && <p className="text-center text-[11px] text-slate-400 my-2">{lastDay}</p>}
+                          <MessageBubble msg={m} isMine={m.sender_id === user.id} />
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+                {showJumpToLatest && (
+                  <button
+                    onClick={jumpToLatest}
+                    className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-navy-900 text-white text-xs font-medium px-3 py-1.5 shadow-lg hover:bg-navy-800 transition-colors"
+                  >
+                    New messages ↓
+                  </button>
+                )}
               </div>
 
               {recording && (
-                <div className="border-t border-slate-200 bg-slate-50 p-3 flex items-center gap-3">
+                <div className="border-t border-slate-200 bg-slate-50 p-3 flex items-center gap-3 flex-shrink-0">
                   <span className="text-sm text-red-600 font-medium animate-pulse">● Recording {recording}...</span>
                   {recording === "video" && <video ref={videoPreviewRef} autoPlay muted className="h-16 rounded" />}
                   <div className="ml-auto flex gap-2">
@@ -370,27 +444,27 @@ export default function ChatPage() {
                 </div>
               )}
 
-              <form onSubmit={sendText} className="border-t border-slate-200 p-2 flex items-center gap-1 relative">
+              <form onSubmit={sendText} className="border-t border-slate-200 p-2.5 flex items-center gap-1.5 relative flex-shrink-0">
                 {showEmoji && (
-                  <div className="absolute bottom-12 left-2 card p-2 grid grid-cols-8 gap-1 z-10 shadow-lg">
+                  <div className="absolute bottom-14 left-2 card p-2 grid grid-cols-8 gap-1 z-10 shadow-lg">
                     {EMOJIS.map((e) => (
-                      <button key={e} type="button" className="text-lg hover:bg-slate-100 rounded" onClick={() => insertEmoji(e)}>{e}</button>
+                      <button key={e} type="button" className="text-lg hover:bg-slate-100 rounded transition-colors" onClick={() => insertEmoji(e)}>{e}</button>
                     ))}
                   </div>
                 )}
-                <button type="button" className="text-xl px-1" title="Emoji" onClick={() => setShowEmoji((s) => !s)}>😊</button>
+                <button type="button" className="text-xl px-1 hover:opacity-70 transition-opacity" title="Emoji" onClick={() => setShowEmoji((s) => !s)}>😊</button>
                 <input ref={fileInputRef} type="file" className="hidden" onChange={handleFilePick} />
-                <button type="button" className="text-xl px-1" title="Attach file" onClick={() => fileInputRef.current?.click()} disabled={uploading}>📎</button>
-                <button type="button" className="text-xl px-1" title="Record voice" onClick={() => startRecording("voice")} disabled={uploading || !!recording}>🎤</button>
-                <button type="button" className="text-xl px-1" title="Record video" onClick={() => startRecording("video")} disabled={uploading || !!recording}>📹</button>
+                <button type="button" className="text-xl px-1 hover:opacity-70 transition-opacity" title="Attach file" onClick={() => fileInputRef.current?.click()} disabled={uploading}>📎</button>
+                <button type="button" className="text-xl px-1 hover:opacity-70 transition-opacity" title="Record voice" onClick={() => startRecording("voice")} disabled={uploading || !!recording}>🎤</button>
+                <button type="button" className="text-xl px-1 hover:opacity-70 transition-opacity" title="Record video" onClick={() => startRecording("video")} disabled={uploading || !!recording}>📹</button>
                 <input
-                  className="input flex-1 !py-1.5"
+                  className="input flex-1 !rounded-full !py-2"
                   placeholder={uploading ? "Uploading..." : "Type a message"}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   disabled={uploading}
                 />
-                <button type="submit" className="btn-gold !py-1.5" disabled={uploading || !text.trim()}>Send</button>
+                <button type="submit" className="btn-gold !rounded-full !py-2 !px-4" disabled={uploading || !text.trim()}>Send</button>
               </form>
             </>
           )}
@@ -399,7 +473,7 @@ export default function ChatPage() {
 
       {error && <div className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-      <Modal open={newChatOpen} title="New Chat" onClose={() => setNewChatOpen(false)}>
+      <Modal open={newChatOpen} title="New Chat" onClose={() => setNewChatOpen(false)} error={error}>
         <div className="flex gap-2 mb-3">
           <button className={newChatTab === "direct" ? "btn-primary !text-xs !py-1" : "btn-secondary !text-xs !py-1"} onClick={() => setNewChatTab("direct")}>Direct Message</button>
           <button className={newChatTab === "group" ? "btn-primary !text-xs !py-1" : "btn-secondary !text-xs !py-1"} onClick={() => setNewChatTab("group")}>New Group</button>
@@ -438,7 +512,7 @@ export default function ChatPage() {
         )}
       </Modal>
 
-      <Modal open={groupInfoOpen} title={`Group: ${active?.display_name || ""}`} onClose={() => setGroupInfoOpen(false)}>
+      <Modal open={groupInfoOpen} title={`Group: ${active?.display_name || ""}`} onClose={() => setGroupInfoOpen(false)} error={error}>
         <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Members</p>
         <div className="space-y-1 mb-4">
           {active?.participants.map((p) => (

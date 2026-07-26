@@ -212,7 +212,7 @@ export default function Roles() {
         </>
       )}
 
-      <Modal open={modalOpen} title={editing ? `Edit Role: ${editing.name}` : "Add Role"} onClose={() => setModalOpen(false)} wide>
+      <Modal open={modalOpen} title={editing ? `Edit Role: ${editing.name}` : "Add Role"} onClose={() => setModalOpen(false)} wide error={error}>
         <form onSubmit={handleSave} className="space-y-4">
           {!editing && (
             <div>
