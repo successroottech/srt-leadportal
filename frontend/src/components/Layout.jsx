@@ -68,9 +68,9 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-navy-950 text-white transition-transform lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform overflow-y-auto bg-navy-950 text-white transition-transform lg:static lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -108,8 +108,8 @@ export default function Layout() {
         <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 flex-shrink-0">
           <button className="lg:hidden btn-secondary !px-2 !py-1" onClick={() => setSidebarOpen(true)}>
             ☰
           </button>
@@ -146,7 +146,7 @@ export default function Layout() {
             </button>
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 lg:p-6">
           <Outlet />
         </main>
       </div>

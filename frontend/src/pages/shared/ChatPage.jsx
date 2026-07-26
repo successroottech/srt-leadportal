@@ -341,7 +341,7 @@ export default function ChatPage() {
   let lastDay = null;
 
   return (
-    <div className="h-[calc(100vh-7rem)] max-h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       <div className="flex flex-1 min-h-0 gap-3">
         {/* Conversation list */}
         <div className={`${activeId ? "hidden md:flex" : "flex"} w-full md:w-72 min-h-0 flex-col card p-0 overflow-hidden`}>
