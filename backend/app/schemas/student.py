@@ -15,6 +15,8 @@ class StudentCreate(BaseModel):
     dob: date | None = None
     gender: str | None = None
     address: str | None = None
+    father_name: str | None = None
+    portal_ref: str | None = None
     qualification: str | None = None
     college_name: str | None = None
     graduation_year: int | None = None
@@ -48,6 +50,9 @@ class StudentUpdate(BaseModel):
     dob: date | None = None
     gender: str | None = None
     address: str | None = None
+    father_name: str | None = None
+    portal_ref: str | None = None
+    profile_photo: str | None = None
     qualification: str | None = None
     college_name: str | None = None
     graduation_year: int | None = None
@@ -80,6 +85,9 @@ class StudentOut(BaseModel):
     dob: date | None
     gender: str | None
     address: str | None
+    father_name: str | None
+    portal_ref: str | None
+    profile_photo: str | None
     qualification: str | None
     college_name: str | None
     graduation_year: int | None

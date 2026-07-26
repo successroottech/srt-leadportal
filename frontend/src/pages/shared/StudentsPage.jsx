@@ -228,6 +228,15 @@ export default function StudentsPage() {
           <input className="input w-full sm:!w-56" placeholder="Search name/mobile/code" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} />
           <button className="btn-secondary" onClick={load}>Search</button>
           <button className="btn-secondary" onClick={handleExport}>Export</button>
+          <button
+            className="btn-secondary"
+            onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/register`);
+              alert("Registration link copied! Share it with prospective students.");
+            }}
+          >
+            Copy Registration Link
+          </button>
           <button className="btn-gold" onClick={() => setAddOpen(true)}>+ Add Student</button>
         </div>
       </div>

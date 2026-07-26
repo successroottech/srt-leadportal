@@ -208,6 +208,8 @@ CREATE TABLE IF NOT EXISTS students (
     dob                         DATE,
     gender                      VARCHAR(20),
     address                     TEXT,
+    father_name                 VARCHAR(150),
+    portal_ref                  VARCHAR(100),
     qualification               VARCHAR(150),
     college_name                VARCHAR(150),
     graduation_year             INTEGER,

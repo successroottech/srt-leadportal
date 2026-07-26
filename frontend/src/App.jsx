@@ -4,6 +4,7 @@ import { SettingsProvider } from "./context/SettingsContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
+import PublicRegister from "./pages/PublicRegister";
 
 import AdminDashboard from "./pages/admin/Dashboard";
 import Roles from "./pages/admin/Roles";
@@ -56,6 +57,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<PublicRegister />} />
           <Route path="/" element={<RoleHome />} />
 
           <Route element={<ProtectedRoute roles={["admin"]} />}>

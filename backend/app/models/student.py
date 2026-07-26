@@ -19,6 +19,8 @@ class Student(Base):
     dob: Mapped[date | None] = mapped_column(Date)
     gender: Mapped[str | None] = mapped_column(String(20))
     address: Mapped[str | None] = mapped_column(Text)
+    father_name: Mapped[str | None] = mapped_column(String(150))
+    portal_ref: Mapped[str | None] = mapped_column(String(100))
     qualification: Mapped[str | None] = mapped_column(String(150))
     college_name: Mapped[str | None] = mapped_column(String(150))
     graduation_year: Mapped[int | None] = mapped_column(Integer)
