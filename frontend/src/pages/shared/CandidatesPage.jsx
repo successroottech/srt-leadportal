@@ -11,6 +11,7 @@ const STATUS_OPTIONS = [
 export default function CandidatesPage({ allowManage = false }) {
   const [rows, setRows] = useState([]);
   const [telecallers, setTelecallers] = useState([]);
+  const [trainers, setTrainers] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -23,6 +24,32 @@ export default function CandidatesPage({ allowManage = false }) {
 
   const [assignRow, setAssignRow] = useState(null);
   const [assignTo, setAssignTo] = useState("");
+
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [trainerAssignOpen, setTrainerAssignOpen] = useState(false);
+  const [trainerAssignTo, setTrainerAssignTo] = useState("");
+
+  const trainerById = Object.fromEntries(trainers.map((t) => [t.id, t.name]));
+
+  function toggleSelect(id) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => (prev.length === rows.length ? [] : rows.map((r) => r.id)));
+  }
+
+  async function submitTrainerAssign(e) {
+    e.preventDefault();
+    try {
+      await api.post("/candidates/bulk-assign-trainer", { candidate_ids: selectedIds, trainer_id: Number(trainerAssignTo) });
+      setTrainerAssignOpen(false);
+      setSelectedIds([]);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    }
+  }
 
   const [interviewRow, setInterviewRow] = useState(null);
   const [interviewForm, setInterviewForm] = useState({ interview_date: "", company: "", job_role: "", status: "scheduled" });
@@ -49,6 +76,7 @@ export default function CandidatesPage({ allowManage = false }) {
     if (allowManage) {
       api.get("/staff", { params: { role: "telecaller" } }).then((res) => setTelecallers(res.data)).catch(() => {});
     }
+    api.get("/staff", { params: { role: "trainer" } }).then((res) => setTrainers(res.data)).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
@@ -159,6 +187,11 @@ export default function CandidatesPage({ allowManage = false }) {
               <button className="btn-secondary" onClick={handleExport}>Export</button>
             </>
           )}
+          {selectedIds.length > 0 && (
+            <button className="btn-secondary" onClick={() => { setTrainerAssignTo(""); setTrainerAssignOpen(true); }}>
+              Bulk Assign Trainer ({selectedIds.length})
+            </button>
+          )}
           <button className="btn-gold" onClick={() => setAddOpen(true)}>+ New Candidate</button>
         </div>
       </div>
@@ -180,17 +213,20 @@ export default function CandidatesPage({ allowManage = false }) {
             <table className="data-table w-full">
               <thead>
                 <tr>
-                  <th>Code</th><th>Name</th><th>Mobile</th><th>Preferred Role</th><th>Status</th><th>Actions</th>
+                  <th><input type="checkbox" checked={rows.length > 0 && selectedIds.length === rows.length} onChange={toggleSelectAll} /></th>
+                  <th>Code</th><th>Name</th><th>Mobile</th><th>Preferred Role</th><th>Status</th><th>Trainer</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((c) => (
                   <tr key={c.id}>
+                    <td><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelect(c.id)} /></td>
                     <td>{c.candidate_code}</td>
                     <td className="font-medium">{c.name}</td>
                     <td>{c.mobile}</td>
                     <td>{c.preferred_job_role || "—"}</td>
                     <td><span className="badge bg-slate-200 text-slate-700">{c.status.replace(/_/g, " ")}</span></td>
+                    <td>{trainerById[c.assigned_trainer_id] || "—"}</td>
                     <td className="whitespace-nowrap space-x-2">
                       <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(c)}>Update</button>
                       {allowManage && (
@@ -210,11 +246,15 @@ export default function CandidatesPage({ allowManage = false }) {
             {rows.map((c) => (
               <div key={c.id} className="card p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium text-navy-900">{c.name}</p>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelect(c.id)} />
+                    <p className="font-medium text-navy-900">{c.name}</p>
+                  </label>
                   <span className="badge bg-slate-200 text-slate-700">{c.status.replace(/_/g, " ")}</span>
                 </div>
                 <p className="text-sm text-slate-500">{c.mobile} <span className="text-slate-400">({c.candidate_code})</span></p>
                 <p className="mt-1 text-xs text-slate-500">Preferred role: {c.preferred_job_role || "—"}</p>
+                <p className="mt-1 text-xs text-slate-500">Trainer: {trainerById[c.assigned_trainer_id] || "—"}</p>
                 <div className="mt-2 flex flex-wrap gap-3 border-t border-slate-100 pt-2">
                   <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => openEdit(c)}>Update</button>
                   {allowManage && (
@@ -267,6 +307,16 @@ export default function CandidatesPage({ allowManage = false }) {
             {telecallers.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
           </select>
           <div className="flex justify-end gap-2"><button type="button" className="btn-secondary" onClick={() => setAssignRow(null)}>Cancel</button><button type="submit" className="btn-primary">Assign</button></div>
+        </form>
+      </Modal>
+
+      <Modal open={trainerAssignOpen} title={`Bulk Assign Trainer (${selectedIds.length} candidate${selectedIds.length === 1 ? "" : "s"})`} onClose={() => setTrainerAssignOpen(false)} error={error}>
+        <form onSubmit={submitTrainerAssign} className="space-y-3">
+          <select className="input" required value={trainerAssignTo} onChange={(e) => setTrainerAssignTo(e.target.value)}>
+            <option value="">Select trainer</option>
+            {trainers.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+          </select>
+          <div className="flex justify-end gap-2"><button type="button" className="btn-secondary" onClick={() => setTrainerAssignOpen(false)}>Cancel</button><button type="submit" className="btn-primary">Assign</button></div>
         </form>
       </Modal>
 

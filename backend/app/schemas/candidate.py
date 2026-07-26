@@ -37,6 +37,11 @@ class CandidateBulkAssign(BaseModel):
     telecaller_id: int
 
 
+class CandidateBulkAssignTrainer(BaseModel):
+    candidate_ids: list[int]
+    trainer_id: int
+
+
 class CandidateOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -51,6 +56,7 @@ class CandidateOut(BaseModel):
     preferred_location: str | None
     resume_file: str | None
     assigned_telecaller_id: int | None
+    assigned_trainer_id: int | None
     status: str
     follow_up_date: date | None
     remarks: str | None

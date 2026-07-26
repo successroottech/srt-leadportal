@@ -21,6 +21,7 @@ class Candidate(Base):
     preferred_location: Mapped[str | None] = mapped_column(String(150))
     resume_file: Mapped[str | None] = mapped_column(String(255))
     assigned_telecaller_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    assigned_trainer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     status: Mapped[str] = mapped_column(String(30), default="new")
     follow_up_date: Mapped[date | None] = mapped_column(Date)
     remarks: Mapped[str | None] = mapped_column(Text)

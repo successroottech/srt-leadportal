@@ -10,7 +10,7 @@ from app.models.user import User
 from app.models.role import Role
 from app.models.candidate import Candidate, CandidateInterview
 from app.schemas.candidate import (
-    CandidateCreate, CandidateUpdate, CandidateOut, CandidateBulkAssign,
+    CandidateCreate, CandidateUpdate, CandidateOut, CandidateBulkAssign, CandidateBulkAssignTrainer,
     InterviewCreate, InterviewOut,
 )
 from app.services.audit import log_action
@@ -138,6 +138,17 @@ def bulk_assign(payload: CandidateBulkAssign, db: Session = Depends(get_db), use
     log_action(db, user_id=user.id, action="assign", module="candidates", record_id=None, updated_value={"count": len(candidates)})
     db.commit()
     return {"detail": f"{len(candidates)} candidates assigned"}
+
+
+@router.post("/bulk-assign-trainer")
+def bulk_assign_trainer(payload: CandidateBulkAssignTrainer, db: Session = Depends(get_db), user: User = Depends(require_roles(*ALL_ROLES))):
+    candidates = db.query(Candidate).filter(Candidate.id.in_(payload.candidate_ids)).all()
+    for c in candidates:
+        c.assigned_trainer_id = payload.trainer_id
+    notify_user(db, payload.trainer_id, "Candidates handed off to you", f"{len(candidates)} candidates assigned to you for training.", category="candidate")
+    log_action(db, user_id=user.id, action="assign_trainer", module="candidates", record_id=None, updated_value={"count": len(candidates)})
+    db.commit()
+    return {"detail": f"{len(candidates)} candidates assigned to trainer"}
 
 
 @router.get("/{candidate_id}/interviews", response_model=list[InterviewOut])
