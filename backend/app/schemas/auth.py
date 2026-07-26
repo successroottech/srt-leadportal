@@ -29,3 +29,7 @@ class ChangePasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     user_id: int
     new_password: str
+
+
+class UpdatePhotoRequest(BaseModel):
+    file_path: str | None = None

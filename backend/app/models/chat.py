@@ -12,6 +12,7 @@ class ChatConversation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     type: Mapped[str] = mapped_column(String(10), nullable=False)
     name: Mapped[str | None] = mapped_column(String(150))
+    image_path: Mapped[str | None] = mapped_column(String(255))
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

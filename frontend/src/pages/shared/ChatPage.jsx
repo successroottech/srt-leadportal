@@ -28,18 +28,26 @@ function initials(name) {
   return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase();
 }
 
-function Avatar({ name }) {
+function Avatar({ name, photo, online, large = false }) {
+  const size = large ? "h-10 w-10" : "h-7 w-7";
   return (
-    <div className="flex-shrink-0 h-7 w-7 rounded-full bg-navy-100 text-navy-700 text-[11px] font-semibold flex items-center justify-center select-none">
-      {initials(name)}
+    <div className={`relative flex-shrink-0 ${size}`}>
+      {photo ? (
+        <img src={photo} alt={name} className={`${size} rounded-full object-cover`} />
+      ) : (
+        <div className={`${size} rounded-full bg-navy-100 text-navy-700 text-[11px] font-semibold flex items-center justify-center select-none`}>
+          {initials(name)}
+        </div>
+      )}
+      {online && <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white" />}
     </div>
   );
 }
 
-function MessageBubble({ msg, isMine }) {
+function MessageBubble({ msg, isMine, isRead }) {
   return (
     <div className={`flex items-end gap-2 mb-2.5 ${isMine ? "justify-end" : "justify-start"}`}>
-      {!isMine && <Avatar name={msg.sender_name} />}
+      {!isMine && <Avatar name={msg.sender_name} photo={msg.sender_photo} />}
       <div
         className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
           isMine ? "bg-navy-900 text-white rounded-br-sm" : "bg-white border border-slate-200 text-navy-900 rounded-bl-sm"
@@ -68,7 +76,10 @@ function MessageBubble({ msg, isMine }) {
           <video controls src={msg.attachment_path} className="max-w-full max-h-64 rounded-lg" />
         )}
         {msg.body && <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.body}</p>}
-        <p className={`text-[10px] mt-1 text-right ${isMine ? "text-slate-300" : "text-slate-400"}`}>{fmtTime(msg.created_at)}</p>
+        <p className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isMine ? "text-slate-300" : "text-slate-400"}`}>
+          {fmtTime(msg.created_at)}
+          {isMine && <span className={isRead ? "text-sky-300" : ""}>{isRead ? "✓✓" : "✓"}</span>}
+        </p>
       </div>
     </div>
   );
@@ -79,6 +90,7 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [readReceipts, setReadReceipts] = useState([]);
   const [directory, setDirectory] = useState([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -100,6 +112,7 @@ export default function ChatPage() {
   const videoPreviewRef = useRef(null);
 
   const fileInputRef = useRef(null);
+  const groupPhotoInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const lastMessageIdRef = useRef(null);
@@ -121,7 +134,10 @@ export default function ChatPage() {
   const loadMessages = useCallback(async (conversationId) => {
     try {
       const { data } = await api.get(`/chat/conversations/${conversationId}/messages`);
-      if (activeIdRef.current === conversationId) setMessages(data);
+      if (activeIdRef.current === conversationId) {
+        setMessages(data.messages);
+        setReadReceipts(data.read_receipts);
+      }
     } catch (err) {
       setError(apiErrorMessage(err));
     }
@@ -324,6 +340,22 @@ export default function ChatPage() {
     }
   }
 
+  async function handleGroupPhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !activeId) return;
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data: uploaded } = await api.post("/uploads", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await api.put(`/chat/conversations/${activeId}`, { image_path: uploaded.file_path });
+      await loadConversations();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      if (groupPhotoInputRef.current) groupPhotoInputRef.current.value = "";
+    }
+  }
+
   async function removeMember(userId) {
     if (!activeId) return;
     try {
@@ -337,6 +369,14 @@ export default function ChatPage() {
 
   const myParticipant = active?.participants.find((p) => p.user_id === user.id);
   const availableForGroup = directory.filter((d) => !active?.participants.some((p) => p.user_id === d.id));
+
+  // "Read" = every other participant has read up to (at least) this message.
+  function isMessageRead(messageId) {
+    if (readReceipts.length === 0) return false;
+    return readReceipts.every((r) => r.last_read_message_id !== null && r.last_read_message_id >= messageId);
+  }
+
+  const otherParticipant = active?.type === "direct" ? active.participants.find((p) => p.user_id !== user.id) : null;
 
   let lastDay = null;
 
@@ -362,7 +402,11 @@ export default function ChatPage() {
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Avatar name={c.display_name} />
+                    <Avatar
+                      name={c.display_name}
+                      photo={c.display_photo}
+                      online={c.type === "direct" && c.participants.find((p) => p.user_id !== user.id)?.is_online}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <span className={`text-sm truncate ${c.unread_count > 0 ? "font-semibold text-navy-900" : "font-medium text-navy-800"}`}>
@@ -394,9 +438,17 @@ export default function ChatPage() {
               <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 flex-shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <button className="md:hidden text-slate-500" onClick={() => setActiveId(null)}>&larr;</button>
-                  <span className="font-semibold text-navy-900 text-sm truncate">
-                    {active.type === "group" ? `👥 ${active.display_name}` : active.display_name}
-                  </span>
+                  <Avatar name={active.display_name} photo={active.display_photo} online={otherParticipant?.is_online} />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-navy-900 text-sm truncate">
+                      {active.type === "group" ? `👥 ${active.display_name}` : active.display_name}
+                    </p>
+                    {active.type === "direct" && (
+                      <p className={`text-[11px] ${otherParticipant?.is_online ? "text-emerald-600" : "text-slate-400"}`}>
+                        {otherParticipant?.is_online ? "Online" : "Offline"}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 {active.type === "group" && (
                   <button className="text-xs text-navy-700 hover:underline font-medium flex-shrink-0" onClick={() => setGroupInfoOpen(true)}>
@@ -416,7 +468,7 @@ export default function ChatPage() {
                       return (
                         <div key={m.id}>
                           {showDay && <p className="text-center text-[11px] text-slate-400 my-2">{lastDay}</p>}
-                          <MessageBubble msg={m} isMine={m.sender_id === user.id} />
+                          <MessageBubble msg={m} isMine={m.sender_id === user.id} isRead={isMessageRead(m.id)} />
                         </div>
                       );
                     })
@@ -481,8 +533,9 @@ export default function ChatPage() {
         {newChatTab === "direct" ? (
           <div className="max-h-72 overflow-y-auto space-y-1">
             {directory.map((d) => (
-              <button key={d.id} className="w-full text-left px-3 py-2 rounded hover:bg-slate-50 flex items-center justify-between" onClick={() => startDirect(d.id)}>
-                <span>{d.name}</span>
+              <button key={d.id} className="w-full text-left px-3 py-2 rounded hover:bg-slate-50 flex items-center gap-2.5" onClick={() => startDirect(d.id)}>
+                <Avatar name={d.name} photo={d.profile_photo} online={d.is_online} />
+                <span className="flex-1 truncate">{d.name}</span>
                 <span className="badge bg-slate-100 text-slate-600 capitalize">{d.role}</span>
               </button>
             ))}
@@ -497,8 +550,9 @@ export default function ChatPage() {
               <label className="label">Members</label>
               <div className="max-h-56 overflow-y-auto space-y-1 border border-slate-200 rounded p-2">
                 {directory.map((d) => (
-                  <label key={d.id} className="flex items-center gap-2 text-sm px-1 py-1 hover:bg-slate-50 rounded">
+                  <label key={d.id} className="flex items-center gap-2 text-sm px-1 py-1.5 hover:bg-slate-50 rounded">
                     <input type="checkbox" checked={groupMembers.includes(d.id)} onChange={() => toggleGroupMember(d.id)} />
+                    <Avatar name={d.name} photo={d.profile_photo} online={d.is_online} />
                     {d.name} <span className="text-slate-400 text-xs capitalize">({d.role})</span>
                   </label>
                 ))}
@@ -513,11 +567,25 @@ export default function ChatPage() {
       </Modal>
 
       <Modal open={groupInfoOpen} title={`Group: ${active?.display_name || ""}`} onClose={() => setGroupInfoOpen(false)} error={error}>
+        <div className="flex items-center gap-3 mb-4">
+          <Avatar name={active?.display_name} photo={active?.display_photo} large />
+          {myParticipant?.is_admin && (
+            <>
+              <input ref={groupPhotoInputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleGroupPhotoUpload} />
+              <button type="button" className="btn-secondary !text-xs !py-1" onClick={() => groupPhotoInputRef.current?.click()}>
+                Change Group Photo
+              </button>
+            </>
+          )}
+        </div>
         <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Members</p>
         <div className="space-y-1 mb-4">
           {active?.participants.map((p) => (
             <div key={p.user_id} className="flex items-center justify-between text-sm bg-slate-50 rounded px-2 py-1.5">
-              <span>{p.name} {p.is_admin && <span className="badge bg-gold-100 text-gold-700 ml-1">admin</span>}</span>
+              <span className="flex items-center gap-2">
+                <Avatar name={p.name} photo={p.profile_photo} online={p.is_online} />
+                {p.name} {p.is_admin && <span className="badge bg-gold-100 text-gold-700 ml-1">admin</span>}
+              </span>
               {(myParticipant?.is_admin || p.user_id === user.id) && (
                 <button className="text-red-600 hover:underline text-xs" onClick={() => removeMember(p.user_id)}>
                   {p.user_id === user.id ? "Leave" : "Remove"}

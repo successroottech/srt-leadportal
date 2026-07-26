@@ -26,6 +26,7 @@ class ChatMessageOut(BaseModel):
     conversation_id: int
     sender_id: int
     sender_name: str | None = None
+    sender_photo: str | None = None
     body: str | None
     message_type: str
     attachment_path: str | None
@@ -55,13 +56,17 @@ class ChatParticipantOut(BaseModel):
     name: str
     role: str
     is_admin: bool
+    profile_photo: str | None = None
+    is_online: bool = False
 
 
 class ChatConversationOut(BaseModel):
     id: int
     type: str
     name: str | None
+    image_path: str | None
     display_name: str
+    display_photo: str | None
     created_at: datetime
     participants: list[ChatParticipantOut]
     last_message: ChatMessageOut | None
@@ -72,9 +77,26 @@ class AddParticipant(BaseModel):
     user_id: int
 
 
+class ConversationUpdate(BaseModel):
+    name: str | None = None
+    image_path: str | None = None
+
+
+class ReadReceipt(BaseModel):
+    user_id: int
+    last_read_message_id: int | None
+
+
+class MessagesPage(BaseModel):
+    messages: list[ChatMessageOut]
+    read_receipts: list[ReadReceipt]
+
+
 class StaffDirectoryEntry(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     role: str
     department: str | None
+    profile_photo: str | None = None
+    is_online: bool = False

@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -9,12 +11,22 @@ from app.models.role import Role
 from app.models.chat import ChatConversation, ChatMessage, ChatParticipant
 from app.schemas.chat import (
     ChatMessageCreate, ChatMessageOut, ChatConversationCreate, ChatConversationOut,
-    ChatParticipantOut, AddParticipant, StaffDirectoryEntry,
+    ChatParticipantOut, AddParticipant, ConversationUpdate, ReadReceipt, MessagesPage, StaffDirectoryEntry,
 )
 
 router = APIRouter()
 
 STAFF_ROLES = ("admin", "hr", "telecaller", "trainer")
+ONLINE_THRESHOLD_SECONDS = 90
+
+
+def _is_online(user: User) -> bool:
+    if not user.last_active_at:
+        return False
+    last_active = user.last_active_at
+    if last_active.tzinfo is None:
+        last_active = last_active.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - last_active) < timedelta(seconds=ONLINE_THRESHOLD_SECONDS)
 
 
 def _require_participant(db: Session, conversation_id: int, user_id: int) -> ChatParticipant:
@@ -42,6 +54,7 @@ def _serialize_message(db: Session, message: ChatMessage) -> ChatMessageOut:
     sender = db.get(User, message.sender_id)
     out = ChatMessageOut.model_validate(message)
     out.sender_name = sender.name if sender else None
+    out.sender_photo = sender.profile_photo if sender else None
     return out
 
 
@@ -49,22 +62,27 @@ def _serialize_conversation(db: Session, conversation: ChatConversation, viewer_
     participants = db.query(ChatParticipant).filter(ChatParticipant.conversation_id == conversation.id).all()
     participant_out = []
     my_participant = None
-    other_name = None
+    other_name, other_photo = None, None
     for p in participants:
         user = db.get(User, p.user_id)
         if not user:
             continue
         role = db.get(Role, user.role_id)
-        participant_out.append(ChatParticipantOut(user_id=user.id, name=user.name, role=role.name if role else "", is_admin=p.is_admin))
+        participant_out.append(ChatParticipantOut(
+            user_id=user.id, name=user.name, role=role.name if role else "", is_admin=p.is_admin,
+            profile_photo=user.profile_photo, is_online=_is_online(user),
+        ))
         if p.user_id == viewer_id:
             my_participant = p
         elif conversation.type == "direct":
-            other_name = user.name
+            other_name, other_photo = user.name, user.profile_photo
 
     if conversation.type == "group":
         display_name = conversation.name or "Group"
+        display_photo = conversation.image_path
     else:
         display_name = other_name or "Direct message"
+        display_photo = other_photo
 
     last_message_row = (
         db.query(ChatMessage)
@@ -76,7 +94,8 @@ def _serialize_conversation(db: Session, conversation: ChatConversation, viewer_
     unread = _unread_count(db, conversation.id, my_participant) if my_participant else 0
 
     return ChatConversationOut(
-        id=conversation.id, type=conversation.type, name=conversation.name, display_name=display_name,
+        id=conversation.id, type=conversation.type, name=conversation.name, image_path=conversation.image_path,
+        display_name=display_name, display_photo=display_photo,
         created_at=conversation.created_at, participants=participant_out,
         last_message=last_message, unread_count=unread,
     )
@@ -94,7 +113,10 @@ def staff_directory(db: Session = Depends(get_db), current_user: User = Depends(
     out = []
     for u in rows:
         role = db.get(Role, u.role_id)
-        out.append(StaffDirectoryEntry(id=u.id, name=u.name, role=role.name if role else "", department=u.department))
+        out.append(StaffDirectoryEntry(
+            id=u.id, name=u.name, role=role.name if role else "", department=u.department,
+            profile_photo=u.profile_photo, is_online=_is_online(u),
+        ))
     return out
 
 
@@ -151,7 +173,7 @@ def create_conversation(payload: ChatConversationCreate, db: Session = Depends(g
     return _serialize_conversation(db, conversation, current_user.id)
 
 
-@router.get("/conversations/{conversation_id}/messages", response_model=list[ChatMessageOut])
+@router.get("/conversations/{conversation_id}/messages", response_model=MessagesPage)
 def list_messages(
     conversation_id: int, before_id: int | None = None, limit: int = 50,
     db: Session = Depends(get_db), current_user: User = Depends(require_roles(*STAFF_ROLES)),
@@ -162,7 +184,13 @@ def list_messages(
         q = q.filter(ChatMessage.id < before_id)
     rows = q.order_by(ChatMessage.id.desc()).limit(min(limit, 100)).all()
     rows.reverse()
-    return [_serialize_message(db, m) for m in rows]
+
+    others = db.query(ChatParticipant).filter(
+        ChatParticipant.conversation_id == conversation_id, ChatParticipant.user_id != current_user.id
+    ).all()
+    read_receipts = [ReadReceipt(user_id=p.user_id, last_read_message_id=p.last_read_message_id) for p in others]
+
+    return MessagesPage(messages=[_serialize_message(db, m) for m in rows], read_receipts=read_receipts)
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=ChatMessageOut)
@@ -197,6 +225,30 @@ def mark_read(conversation_id: int, db: Session = Depends(get_db), current_user:
         participant.last_read_message_id = latest.id
         db.commit()
     return {"detail": "ok"}
+
+
+@router.post("/presence/heartbeat")
+def presence_heartbeat(db: Session = Depends(get_db), current_user: User = Depends(require_roles(*STAFF_ROLES))):
+    current_user.last_active_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"detail": "ok"}
+
+
+@router.put("/conversations/{conversation_id}", response_model=ChatConversationOut)
+def update_conversation(
+    conversation_id: int, payload: ConversationUpdate,
+    db: Session = Depends(get_db), current_user: User = Depends(require_roles(*STAFF_ROLES)),
+):
+    conversation = db.get(ChatConversation, conversation_id)
+    if not conversation or conversation.type != "group":
+        raise HTTPException(status_code=404, detail="Group conversation not found")
+    me = _require_participant(db, conversation_id, current_user.id)
+    if not me.is_admin:
+        raise HTTPException(status_code=403, detail="Only a group admin can update this group")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(conversation, field, value)
+    db.commit()
+    return _serialize_conversation(db, conversation, current_user.id)
 
 
 @router.get("/unread-count")

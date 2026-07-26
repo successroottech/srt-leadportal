@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
-import { api } from "../api/client";
+import { api, apiErrorMessage } from "../api/client";
 import SrtLogo from "../assets/SrtLogo";
 import { NAV_BY_ROLE } from "./nav";
+
+function initials(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase();
+}
 
 const ROLE_LABELS = {
   admin: "Administrator",
@@ -15,12 +21,14 @@ const ROLE_LABELS = {
 };
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshMe } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [unread, setUnread] = useState(0);
   const [chatUnread, setChatUnread] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef(null);
 
   const items = NAV_BY_ROLE[user?.role] || [];
   const hasChat = user?.role !== "student";
@@ -62,9 +70,45 @@ export default function Layout() {
     };
   }, [hasChat]);
 
+  useEffect(() => {
+    if (!hasChat) return;
+    let active = true;
+    async function beat() {
+      try {
+        await api.post("/chat/presence/heartbeat");
+      } catch {
+        /* ignore */
+      }
+    }
+    beat();
+    const interval = setInterval(() => active && beat(), 45000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [hasChat]);
+
   async function handleLogout() {
     await logout();
     navigate("/login");
+  }
+
+  async function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data: uploaded } = await api.post("/uploads", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await api.post("/auth/me/photo", { file_path: uploaded.file_path });
+      await refreshMe();
+    } catch (err) {
+      alert(apiErrorMessage(err));
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
   }
 
   return (
@@ -141,6 +185,22 @@ export default function Layout() {
               <p className="text-sm font-medium text-navy-900">{user?.name}</p>
               <p className="text-xs text-slate-500">{ROLE_LABELS[user?.role]}</p>
             </div>
+            <input ref={photoInputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handlePhotoUpload} />
+            <button
+              type="button"
+              title="Change my photo"
+              className="relative h-8 w-8 flex-shrink-0 rounded-full overflow-hidden hover:opacity-80 transition-opacity"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhoto}
+            >
+              {user?.profile_photo ? (
+                <img src={user.profile_photo} alt={user.name} className="h-full w-full object-cover" />
+              ) : (
+                <span className="h-full w-full flex items-center justify-center bg-navy-100 text-navy-700 text-xs font-semibold">
+                  {initials(user?.name)}
+                </span>
+              )}
+            </button>
             <button className="btn-secondary" onClick={handleLogout}>
               Logout
             </button>

@@ -10,7 +10,7 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.db.session import get_db
 from app.models.user import User, LoginHistory
 from app.models.role import Role
-from app.schemas.auth import LoginRequest, TokenResponse, ChangePasswordRequest
+from app.schemas.auth import LoginRequest, TokenResponse, ChangePasswordRequest, UpdatePhotoRequest
 from app.services.audit import log_action
 
 router = APIRouter()
@@ -103,6 +103,13 @@ def me(current_user: User = Depends(get_current_user), db: Session = Depends(get
         "department": current_user.department,
         "profile_photo": current_user.profile_photo,
     }
+
+
+@router.post("/me/photo")
+def update_my_photo(payload: UpdatePhotoRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_user.profile_photo = payload.file_path
+    db.commit()
+    return {"profile_photo": current_user.profile_photo}
 
 
 @router.post("/change-password")

@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS users (
     is_active           BOOLEAN NOT NULL DEFAULT TRUE,
     must_reset_password BOOLEAN NOT NULL DEFAULT FALSE,
     last_login_at       TIMESTAMPTZ,
+    last_active_at      TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_users_contact CHECK (email IS NOT NULL OR mobile IS NOT NULL)
@@ -590,6 +591,7 @@ CREATE TABLE IF NOT EXISTS chat_conversations (
     id              SERIAL PRIMARY KEY,
     type            VARCHAR(10) NOT NULL CHECK (type IN ('direct', 'group')),
     name            VARCHAR(150),
+    image_path      VARCHAR(255),
     created_by      INTEGER REFERENCES users(id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
