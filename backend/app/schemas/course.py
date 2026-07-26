@@ -19,6 +19,7 @@ class CourseUpdate(BaseModel):
     regular_fee: float | None = None
     offer_fee: float | None = None
     category: str | None = None
+    syllabus_file: str | None = None
     is_active: bool | None = None
 
 

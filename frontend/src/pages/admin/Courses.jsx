@@ -141,6 +141,67 @@ const formFields = [
   { name: "description", label: "Description", type: "textarea" },
 ];
 
+function SyllabusFileManager({ course, onUpdated }) {
+  const [file, setFile] = useState(course.syllabus_file || null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef(null);
+
+  async function handleUpload(e) {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
+    setUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", picked);
+      const { data: uploaded } = await api.post("/uploads", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await api.put(`/courses/${course.id}`, { syllabus_file: uploaded.file_path });
+      setFile(uploaded.file_path);
+      onUpdated?.(uploaded.file_path);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleRemove() {
+    if (!window.confirm("Remove the uploaded syllabus file?")) return;
+    try {
+      await api.put(`/courses/${course.id}`, { syllabus_file: null });
+      setFile(null);
+      onUpdated?.(null);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    }
+  }
+
+  function shareOnWhatsApp() {
+    const link = `${window.location.origin}${file}`;
+    const message = `Hi! Here is the syllabus for ${course.name}: ${link}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noreferrer");
+  }
+
+  return (
+    <div className="border-b border-slate-200 pb-4 mb-4">
+      <p className="label mb-2">Syllabus File</p>
+      {error && <div className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {file ? (
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <a href={file} target="_blank" rel="noreferrer" className="text-navy-700 hover:underline text-sm">View current file</a>
+          <button className="btn-secondary !py-1 !px-2 text-xs" onClick={shareOnWhatsApp}>Share via WhatsApp</button>
+          <button className="text-red-600 hover:underline text-xs font-medium" onClick={handleRemove}>Remove</button>
+        </div>
+      ) : (
+        <p className="text-sm text-slate-400 mb-2">No syllabus file uploaded yet.</p>
+      )}
+      <input ref={fileInputRef} type="file" className="input" accept=".pdf,.doc,.docx" onChange={handleUpload} disabled={uploading} />
+    </div>
+  );
+}
+
 function SyllabusEditor({ courseId, onClose }) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -245,7 +306,15 @@ export default function Courses() {
         )}
       />
       <Modal open={!!syllabusCourse} title={`Syllabus: ${syllabusCourse?.name || ""}`} onClose={() => setSyllabusCourse(null)} wide>
-        {syllabusCourse && <SyllabusEditor courseId={syllabusCourse.id} onClose={() => setSyllabusCourse(null)} />}
+        {syllabusCourse && (
+          <>
+            <SyllabusFileManager
+              course={syllabusCourse}
+              onUpdated={(syllabus_file) => setSyllabusCourse({ ...syllabusCourse, syllabus_file })}
+            />
+            <SyllabusEditor courseId={syllabusCourse.id} onClose={() => setSyllabusCourse(null)} />
+          </>
+        )}
       </Modal>
       <Modal open={!!materialsCourse} title={`Materials: ${materialsCourse?.name || ""}`} onClose={() => setMaterialsCourse(null)} wide>
         {materialsCourse && <MaterialsManager courseId={materialsCourse.id} onClose={() => setMaterialsCourse(null)} />}
