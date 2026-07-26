@@ -379,6 +379,7 @@ CREATE TABLE IF NOT EXISTS candidates (
     resume_file                VARCHAR(255),
     assigned_telecaller_id     INTEGER REFERENCES users(id),
     assigned_trainer_id        INTEGER REFERENCES users(id),
+    assigned_at                TIMESTAMPTZ,
     status                     VARCHAR(30) NOT NULL DEFAULT 'new' CHECK (status IN
         ('new','assigned','contacted','documents_pending','training_required','training_in_progress',
          'ready_for_interview','interview_scheduled','selected','rejected','joined','on_hold','closed')),

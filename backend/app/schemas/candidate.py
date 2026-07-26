@@ -42,6 +42,11 @@ class CandidateBulkAssignTrainer(BaseModel):
     trainer_id: int
 
 
+class CandidateCloseAssignments(BaseModel):
+    scope: str  # "today" or "stale"
+    telecaller_id: int | None = None  # admin/hr may close on behalf of a telecaller
+
+
 class CandidateOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -57,6 +62,7 @@ class CandidateOut(BaseModel):
     resume_file: str | None
     assigned_telecaller_id: int | None
     assigned_trainer_id: int | None
+    assigned_at: datetime | None
     status: str
     follow_up_date: date | None
     remarks: str | None

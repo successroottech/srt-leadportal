@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, apiErrorMessage } from "../../api/client";
 import { exportCsv } from "../../utils/exportCsv";
 import Modal from "../../components/Modal";
+import { useAuth } from "../../context/AuthContext";
 
 const STATUS_OPTIONS = [
   "new", "assigned", "contacted", "documents_pending", "training_required", "training_in_progress",
@@ -9,6 +10,8 @@ const STATUS_OPTIONS = [
 ];
 
 export default function CandidatesPage({ allowManage = false }) {
+  const { user } = useAuth();
+  const isTelecaller = user?.role === "telecaller";
   const [rows, setRows] = useState([]);
   const [telecallers, setTelecallers] = useState([]);
   const [trainers, setTrainers] = useState([]);
@@ -45,6 +48,30 @@ export default function CandidatesPage({ allowManage = false }) {
       await api.post("/candidates/bulk-assign-trainer", { candidate_ids: selectedIds, trainer_id: Number(trainerAssignTo) });
       setTrainerAssignOpen(false);
       setSelectedIds([]);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    }
+  }
+
+  async function handleAutoAssign() {
+    setError("");
+    try {
+      const { data } = await api.post("/candidates/auto-assign");
+      alert(data.detail);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    }
+  }
+
+  async function handleCloseAssignments(scope) {
+    const label = scope === "today" ? "today's assignment" : "yesterday's pending assignments";
+    if (!window.confirm(`Close ${label}? Untouched candidates will return to the unassigned pool.`)) return;
+    setError("");
+    try {
+      const { data } = await api.post("/candidates/close-assignments", { scope });
+      alert(data.detail);
       await load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -191,6 +218,13 @@ export default function CandidatesPage({ allowManage = false }) {
             <button className="btn-secondary" onClick={() => { setTrainerAssignTo(""); setTrainerAssignOpen(true); }}>
               Bulk Assign Trainer ({selectedIds.length})
             </button>
+          )}
+          {isTelecaller && (
+            <>
+              <button className="btn-secondary" onClick={handleAutoAssign}>Get Today's 3 Candidates</button>
+              <button className="btn-secondary" onClick={() => handleCloseAssignments("today")}>Close Today's Assignment</button>
+              <button className="btn-secondary" onClick={() => handleCloseAssignments("stale")}>Close Yesterday's Pending</button>
+            </>
           )}
           <button className="btn-gold" onClick={() => setAddOpen(true)}>+ New Candidate</button>
         </div>

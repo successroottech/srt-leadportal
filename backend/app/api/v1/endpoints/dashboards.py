@@ -113,6 +113,53 @@ def leads_dashboard(db: Session = Depends(get_db), _: User = Depends(require_rol
     }
 
 
+@router.get("/candidates")
+def candidates_dashboard(db: Session = Depends(get_db), _: User = Depends(require_roles("admin", "hr"))):
+    today = date.today()
+    total = db.query(Candidate).count()
+    unassigned = db.query(Candidate).filter(Candidate.assigned_telecaller_id.is_(None), Candidate.status == "new").count()
+    assigned_today = db.query(Candidate).filter(Candidate.status == "assigned", func.date(Candidate.assigned_at) == today).count()
+    stale_pending = db.query(Candidate).filter(Candidate.status == "assigned", func.date(Candidate.assigned_at) < today).count()
+    status_breakdown = dict(db.query(Candidate.status, func.count()).group_by(Candidate.status).all())
+    todays_followups = db.query(Candidate).filter(Candidate.follow_up_date == today).count()
+    overdue_followups = db.query(Candidate).filter(
+        Candidate.follow_up_date < today, Candidate.status.notin_(["selected", "rejected", "joined", "closed"])
+    ).count()
+
+    telecaller_rows = (
+        db.query(
+            Candidate.assigned_telecaller_id,
+            func.count(),
+            func.count().filter(Candidate.status == "assigned", func.date(Candidate.assigned_at) == today),
+            func.count().filter(Candidate.status == "assigned", func.date(Candidate.assigned_at) < today),
+        )
+        .filter(Candidate.assigned_telecaller_id.isnot(None))
+        .group_by(Candidate.assigned_telecaller_id)
+        .all()
+    )
+    trainer_rows = (
+        db.query(Candidate.assigned_trainer_id, func.count())
+        .filter(Candidate.assigned_trainer_id.isnot(None))
+        .group_by(Candidate.assigned_trainer_id)
+        .all()
+    )
+
+    return {
+        "total_candidates": total,
+        "unassigned_candidates": unassigned,
+        "assigned_today": assigned_today,
+        "stale_pending": stale_pending,
+        "status_breakdown": status_breakdown,
+        "todays_followups": todays_followups,
+        "overdue_followups": overdue_followups,
+        "telecaller_wise": [
+            {"telecaller_id": r[0], "total_assigned": r[1], "assigned_today": r[2], "stale_pending": r[3]}
+            for r in telecaller_rows
+        ],
+        "trainer_wise": [{"trainer_id": r[0], "handed_off": r[1]} for r in trainer_rows],
+    }
+
+
 @router.get("/attendance")
 def attendance_dashboard(db: Session = Depends(get_db), _: User = Depends(require_roles("admin", "hr"))):
     today = date.today()

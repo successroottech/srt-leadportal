@@ -1,7 +1,9 @@
 import csv
 import io
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -11,7 +13,7 @@ from app.models.role import Role
 from app.models.candidate import Candidate, CandidateInterview
 from app.schemas.candidate import (
     CandidateCreate, CandidateUpdate, CandidateOut, CandidateBulkAssign, CandidateBulkAssignTrainer,
-    InterviewCreate, InterviewOut,
+    CandidateCloseAssignments, InterviewCreate, InterviewOut,
 )
 from app.services.audit import log_action
 from app.services.codegen import next_code
@@ -59,6 +61,7 @@ def create_candidate(payload: CandidateCreate, db: Session = Depends(get_db), us
     db.add(candidate)
     db.flush()
     if candidate.assigned_telecaller_id:
+        candidate.assigned_at = datetime.now(timezone.utc)
         notify_user(db, candidate.assigned_telecaller_id, "New candidate assigned", f"Candidate {candidate.name} assigned to you.", category="candidate")
     log_action(db, user_id=user.id, action="create", module="candidates", record_id=candidate.id)
     db.commit()
@@ -130,8 +133,10 @@ async def bulk_upload(file: UploadFile = File(...), db: Session = Depends(get_db
 @router.post("/bulk-assign")
 def bulk_assign(payload: CandidateBulkAssign, db: Session = Depends(get_db), user: User = Depends(require_roles(*MANAGE_ROLES))):
     candidates = db.query(Candidate).filter(Candidate.id.in_(payload.candidate_ids)).all()
+    now = datetime.now(timezone.utc)
     for c in candidates:
         c.assigned_telecaller_id = payload.telecaller_id
+        c.assigned_at = now
         if c.status == "new":
             c.status = "assigned"
     notify_user(db, payload.telecaller_id, "Candidates assigned", f"{len(candidates)} candidates assigned to you.", category="candidate")
@@ -149,6 +154,55 @@ def bulk_assign_trainer(payload: CandidateBulkAssignTrainer, db: Session = Depen
     log_action(db, user_id=user.id, action="assign_trainer", module="candidates", record_id=None, updated_value={"count": len(candidates)})
     db.commit()
     return {"detail": f"{len(candidates)} candidates assigned to trainer"}
+
+
+DAILY_AUTO_ASSIGN_COUNT = 3
+
+
+@router.post("/auto-assign")
+def auto_assign(db: Session = Depends(get_db), user: User = Depends(require_roles("telecaller"))):
+    pool = (
+        db.query(Candidate)
+        .filter(Candidate.assigned_telecaller_id.is_(None), Candidate.status == "new")
+        .order_by(Candidate.created_at)
+        .limit(DAILY_AUTO_ASSIGN_COUNT)
+        .all()
+    )
+    if not pool:
+        return {"detail": "No unassigned candidates available right now", "assigned": 0, "candidates": []}
+    now = datetime.now(timezone.utc)
+    for c in pool:
+        c.assigned_telecaller_id = user.id
+        c.assigned_at = now
+        c.status = "assigned"
+    log_action(db, user_id=user.id, action="auto_assign", module="candidates", record_id=None, updated_value={"count": len(pool)})
+    db.commit()
+    return {"detail": f"{len(pool)} candidate(s) assigned to you", "assigned": len(pool), "candidates": [c.id for c in pool]}
+
+
+@router.post("/close-assignments")
+def close_assignments(payload: CandidateCloseAssignments, db: Session = Depends(get_db), user: User = Depends(require_roles(*ALL_ROLES))):
+    if payload.scope not in ("today", "stale"):
+        raise HTTPException(status_code=422, detail="scope must be 'today' or 'stale'")
+    target_id = payload.telecaller_id
+    if target_id and _role_name(db, user) == "telecaller" and target_id != user.id:
+        raise HTTPException(status_code=403, detail="Telecallers can only close their own assignments")
+    target_id = target_id or user.id
+
+    today = date.today()
+    q = db.query(Candidate).filter(Candidate.assigned_telecaller_id == target_id, Candidate.status == "assigned")
+    if payload.scope == "today":
+        q = q.filter(func.date(Candidate.assigned_at) == today)
+    else:
+        q = q.filter(func.date(Candidate.assigned_at) < today)
+    candidates = q.all()
+    for c in candidates:
+        c.assigned_telecaller_id = None
+        c.assigned_at = None
+        c.status = "new"
+    log_action(db, user_id=user.id, action="close_assignments", module="candidates", record_id=None, updated_value={"scope": payload.scope, "count": len(candidates)})
+    db.commit()
+    return {"detail": f"{len(candidates)} candidate(s) returned to the unassigned pool", "closed": len(candidates)}
 
 
 @router.get("/{candidate_id}/interviews", response_model=list[InterviewOut])

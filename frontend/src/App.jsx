@@ -17,6 +17,7 @@ import LeaveApprovals from "./pages/admin/LeaveApprovals";
 import FeedbackAdmin from "./pages/admin/Feedback";
 import AuditLogs from "./pages/admin/AuditLogs";
 import LeadsDashboard from "./pages/admin/LeadsDashboard";
+import CandidatesDashboard from "./pages/admin/CandidatesDashboard";
 import BatchDashboard from "./pages/admin/BatchDashboard";
 import DailyFollowupPage from "./pages/shared/DailyFollowupPage";
 import AdminSettings from "./pages/admin/Settings";
@@ -65,6 +66,7 @@ export default function App() {
               <Route path="/admin/leads" element={<LeadsPage allowManage />} />
               <Route path="/admin/leads-dashboard" element={<LeadsDashboard />} />
               <Route path="/admin/candidates" element={<CandidatesPage allowManage />} />
+              <Route path="/admin/candidates-dashboard" element={<CandidatesDashboard />} />
               <Route path="/admin/students" element={<StudentsPage />} />
               <Route path="/admin/courses" element={<Courses />} />
               <Route path="/admin/batches" element={<BatchesPage allowManage />} />
@@ -90,6 +92,7 @@ export default function App() {
               <Route path="/hr/attendance" element={<AdminAttendance />} />
               <Route path="/hr/leave" element={<LeaveApprovals />} />
               <Route path="/hr/candidates" element={<CandidatesPage allowManage />} />
+              <Route path="/hr/candidates-dashboard" element={<CandidatesDashboard />} />
               <Route path="/hr/students" element={<StudentsPage />} />
               <Route path="/hr/notifications" element={<NotificationsPage />} />
               <Route path="/hr/chat" element={<ChatPage />} />
