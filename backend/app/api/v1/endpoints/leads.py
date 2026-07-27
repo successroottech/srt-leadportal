@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -17,6 +17,7 @@ from app.schemas.lead import (
 from app.schemas.student import StudentOut
 from app.services.audit import log_action
 from app.services.codegen import next_code
+from app.services.documents import create_invoice_document, create_joining_letter_document
 from app.services.fees import create_student_fee_record
 from app.services.notify import notify_user
 
@@ -247,7 +248,14 @@ def convert_lead(lead_id: int, payload: ConvertLeadRequest, db: Session = Depend
         db.flush()
         student.user_id = account.id
 
-    create_student_fee_record(db, student.id, payload.total_course_fee, payload.discount, payload.initial_payment, payload.number_of_emis)
+    create_student_fee_record(
+        db, student.id, payload.total_course_fee, payload.discount, payload.initial_payment, payload.number_of_emis,
+        course_id=student.course_id,
+    )
+
+    if payload.initial_payment > 0:
+        create_joining_letter_document(db, student, created_by=user.id)
+        create_invoice_document(db, student, created_by=user.id, due_date_override=date.today() + timedelta(days=7))
 
     lead.status = "converted"
     lead.converted_student_id = student.id

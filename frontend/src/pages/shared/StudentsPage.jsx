@@ -141,6 +141,7 @@ function DocumentsManager({ student }) {
                 {d.invoice_number && <span className="ml-2 text-slate-400">{d.invoice_number}</span>}
                 {d.amount != null && <span className="ml-2 text-slate-500">₹{Number(d.amount).toLocaleString()}</span>}
                 {d.due_date && <span className="ml-2 text-slate-400">due {d.due_date}</span>}
+                <span className="ml-2 text-slate-400 text-xs">{new Date(d.uploaded_at).toLocaleString()}</span>
               </span>
               <span className="space-x-2 flex-shrink-0">
                 {d.file_path && (
@@ -184,8 +185,10 @@ export default function StudentsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const defaultDueDate = () => new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
   const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ name: "", mobile: "", course_id: "", total_course_fee: 0 });
+  const [addForm, setAddForm] = useState({ name: "", mobile: "", course_id: "", total_course_fee: 0, initial_payment: 0, first_invoice_due_date: defaultDueDate() });
   const [addExpectedCompletion, setAddExpectedCompletion] = useState("");
 
   const [transferRow, setTransferRow] = useState(null);
@@ -246,7 +249,7 @@ export default function StudentsPage() {
         create_login: true,
       });
       setAddOpen(false);
-      setAddForm({ name: "", mobile: "", course_id: "", total_course_fee: 0 });
+      setAddForm({ name: "", mobile: "", course_id: "", total_course_fee: 0, initial_payment: 0, first_invoice_due_date: defaultDueDate() });
       setAddExpectedCompletion("");
       await load();
     } catch (err) {
@@ -338,6 +341,11 @@ export default function StudentsPage() {
   function openPay(emi) {
     setPayEmi(emi);
     setPayForm({ amount: emi.amount - emi.paid_amount, payment_mode: "cash", transaction_number: "", remarks: "" });
+  }
+
+  function openGeneralPay() {
+    setPayEmi({ id: null, emi_number: null });
+    setPayForm({ amount: feeSummary?.balance_fee || 0, payment_mode: "cash", transaction_number: "", remarks: "" });
   }
 
   async function submitPay(e) {
@@ -483,6 +491,15 @@ export default function StudentsPage() {
               Expected course completion: <strong className="text-navy-900">{addExpectedCompletion}</strong> (admission date + course duration)
             </p>
           )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label className="label">Initial Payment</label><input className="input" type="number" value={addForm.initial_payment} onChange={(e) => setAddForm({ ...addForm, initial_payment: e.target.valueAsNumber })} /></div>
+            <div><label className="label">Next Due Date</label><input className="input" type="date" value={addForm.first_invoice_due_date} onChange={(e) => setAddForm({ ...addForm, first_invoice_due_date: e.target.value })} /></div>
+          </div>
+          {addForm.initial_payment > 0 && (
+            <p className="text-xs text-slate-500">
+              A joining letter and first invoice (due {addForm.first_invoice_due_date}) will be generated automatically.
+            </p>
+          )}
           <p className="text-xs text-slate-400">
             A student login is created automatically (default password Welcome@123). Everything else — email, batch, EMI plan, job details — can be filled in later from Edit.
           </p>
@@ -580,10 +597,21 @@ export default function StudentsPage() {
               <div className="card p-2"><p className="font-bold text-base text-red-600">₹{feeSummary.balance_fee.toLocaleString()}</p><p>Pending</p></div>
               <div className="card p-2"><p className="font-bold text-base">{feeSummary.number_of_emis}</p><p>EMI Plan</p></div>
             </div>
-            <p className="text-xs font-semibold text-slate-500 uppercase mb-2">EMI Schedule</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase">EMI Schedule</p>
+              {feeSummary.balance_fee > 0 && (
+                <button className="text-navy-700 hover:underline text-xs font-medium" onClick={openGeneralPay}>
+                  Record Payment
+                </button>
+              )}
+            </div>
             <div className="max-h-72 overflow-y-auto space-y-1">
               {feeEmis.length === 0 ? (
-                <p className="text-sm text-slate-400">No EMI schedule — balance was fully covered by the initial payment.</p>
+                <p className="text-sm text-slate-400">
+                  {feeSummary.balance_fee > 0
+                    ? "No EMI schedule set up — use Record Payment above to collect any amount, in full or in parts, as it comes in."
+                    : "No EMI schedule — balance was fully covered by the initial payment."}
+                </p>
               ) : (
                 feeEmis.map((emi) => {
                   const overdue = emi.status !== "paid" && emi.due_date < new Date().toISOString().slice(0, 10);
@@ -616,7 +644,7 @@ export default function StudentsPage() {
         )}
       </Modal>
 
-      <Modal open={!!payEmi} title={`Record Payment: EMI #${payEmi?.emi_number ?? ""}`} onClose={() => setPayEmi(null)} error={error}>
+      <Modal open={!!payEmi} title={payEmi?.emi_number ? `Record Payment: EMI #${payEmi.emi_number}` : "Record Payment"} onClose={() => setPayEmi(null)} error={error}>
         <form onSubmit={submitPay} className="space-y-3">
           <div><label className="label">Amount</label><input className="input" type="number" required value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.valueAsNumber })} /></div>
           <div>

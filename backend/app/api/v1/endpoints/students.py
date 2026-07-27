@@ -14,6 +14,7 @@ from app.models.batch import Batch
 from app.schemas.student import StudentCreate, StudentUpdate, StudentOut, TransferBatchRequest
 from app.services.audit import log_action
 from app.services.codegen import next_code
+from app.services.documents import create_invoice_document, create_joining_letter_document
 from app.services.fees import create_student_fee_record
 
 router = APIRouter()
@@ -100,7 +101,7 @@ def create_student(payload: StudentCreate, db: Session = Depends(get_db), user: 
     if payload.email and db.query(Student).filter(Student.email == payload.email).first():
         raise HTTPException(status_code=400, detail="A student with this email already exists")
 
-    data = payload.model_dump(exclude={"create_login", "password", "total_course_fee", "discount", "initial_payment", "number_of_emis"})
+    data = payload.model_dump(exclude={"create_login", "password", "total_course_fee", "discount", "initial_payment", "number_of_emis", "first_invoice_due_date"})
     student = Student(student_code=next_code(db, Student, Student.student_code, "SRT-STU-"), **data)
     db.add(student)
     db.flush()
@@ -116,7 +117,15 @@ def create_student(payload: StudentCreate, db: Session = Depends(get_db), user: 
         db.flush()
         student.user_id = user_account.id
 
-    create_student_fee_record(db, student.id, payload.total_course_fee, payload.discount, payload.initial_payment, payload.number_of_emis)
+    create_student_fee_record(
+        db, student.id, payload.total_course_fee, payload.discount, payload.initial_payment, payload.number_of_emis,
+        course_id=student.course_id,
+    )
+
+    if payload.initial_payment > 0:
+        create_joining_letter_document(db, student, created_by=user.id)
+        due_date = payload.first_invoice_due_date or (date.today() + timedelta(days=7))
+        create_invoice_document(db, student, created_by=user.id, due_date_override=due_date)
 
     log_action(db, user_id=user.id, action="create", module="students", record_id=student.id)
     db.commit()

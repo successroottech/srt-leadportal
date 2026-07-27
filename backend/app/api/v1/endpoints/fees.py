@@ -12,6 +12,7 @@ from app.models.student import Student
 from app.models.fee import StudentFee, FeeEmi, Payment
 from app.schemas.fee import StudentFeeOut, FeeEmiOut, PaymentCreate, PaymentOut
 from app.services.audit import log_action
+from app.services.documents import create_invoice_document
 from app.services.fees import recalculate_fee_balance
 from app.services.notify import notify_student
 
@@ -86,8 +87,10 @@ def record_payment(payload: PaymentCreate, db: Session = Depends(get_db), user: 
     )
     db.add(payment)
 
+    db.flush()
     _apply_payment_to_emi(db, fee, payload.amount, payload.emi_id)
     recalculate_fee_balance(db, fee)
+    create_invoice_document(db, student, created_by=user.id)
 
     if student.user_id:
         pass

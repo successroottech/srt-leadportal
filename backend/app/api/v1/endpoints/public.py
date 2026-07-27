@@ -1,5 +1,4 @@
 import os
-import random
 import uuid
 from datetime import date, timedelta
 
@@ -10,12 +9,12 @@ from app.core.config import settings
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.course import Course
-from app.models.fee import Payment
 from app.models.role import Role
 from app.models.student import Student, StudentDocument
 from app.models.user import User
 from app.schemas.document import VerificationOut
 from app.services.codegen import next_code
+from app.services.documents import create_invoice_document, create_joining_letter_document
 from app.services.fees import create_student_fee_record
 
 router = APIRouter()
@@ -131,20 +130,15 @@ async def public_register(
     student.user_id = user_account.id
 
     total_fee = float(course.offer_fee) if course.offer_fee is not None else float(course.regular_fee)
-    create_student_fee_record(db, student.id, total_fee, 0, initial_payment, 0)
+    create_student_fee_record(
+        db, student.id, total_fee, 0, initial_payment, 0,
+        course_id=course.id, payment_mode=payment_mode, receipt_file=proof_path,
+        remarks="Initial payment via public registration",
+    )
 
     if initial_payment > 0:
-        receipt_number = f"RCPT-{date.today().strftime('%Y%m')}-{random.randint(10000, 99999)}"
-        db.add(Payment(
-            receipt_number=receipt_number,
-            student_id=student.id,
-            course_id=course.id,
-            payment_date=date.today(),
-            amount=initial_payment,
-            payment_mode=payment_mode,
-            remarks="Initial payment via public registration",
-            receipt_file=proof_path,
-        ))
+        create_joining_letter_document(db, student)
+        create_invoice_document(db, student, due_date_override=date.today() + timedelta(days=7))
 
     db.commit()
     return {

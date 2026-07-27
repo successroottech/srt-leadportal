@@ -33,6 +33,7 @@ class StudentCreate(BaseModel):
     discount: float = 0
     initial_payment: float = 0
     number_of_emis: int = 0
+    first_invoice_due_date: date | None = None
 
     @field_validator("number_of_emis")
     @classmethod

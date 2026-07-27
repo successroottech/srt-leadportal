@@ -22,7 +22,7 @@ export default function MyDocuments() {
       <div className="card overflow-x-auto">
         <table className="data-table w-full">
           <thead>
-            <tr><th>Type</th><th>Title</th><th>Invoice #</th><th>Amount</th><th>Due Date</th><th>Issued</th><th></th></tr>
+            <tr><th>Type</th><th>Title</th><th>Invoice #</th><th>Amount</th><th>Due Date</th><th>Generated</th><th></th></tr>
           </thead>
           <tbody>
             {docs.length === 0 ? (
@@ -35,7 +35,7 @@ export default function MyDocuments() {
                   <td>{d.invoice_number || "—"}</td>
                   <td>{d.amount != null ? `₹${Number(d.amount).toLocaleString()}` : "—"}</td>
                   <td>{d.due_date || "—"}</td>
-                  <td>{d.issue_date}</td>
+                  <td>{new Date(d.uploaded_at).toLocaleString()}</td>
                   <td>
                     {d.file_path && (
                       <a href={d.file_path} target="_blank" rel="noreferrer" className="text-navy-700 hover:underline text-xs font-medium">

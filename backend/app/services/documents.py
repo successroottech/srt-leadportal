@@ -434,3 +434,88 @@ def generate_invoice(
     c.showPage()
     c.save()
     return _save_pdf(buf)
+
+
+def create_joining_letter_document(db: Session, student, created_by: int | None = None):
+    """Generates a joining letter and adds (but does not commit) the StudentDocument row.
+    Shared by the manual "Generate Joining Letter" action and the auto-generation that
+    fires when a student's initial payment is recorded."""
+    from app.models.course import Course
+    from app.models.student import StudentDocument
+
+    course = db.get(Course, student.course_id) if student.course_id else None
+    code = new_verification_code()
+    file_path = generate_joining_letter(db, student, course.name if course else "-", code)
+    doc = StudentDocument(
+        student_id=student.id,
+        document_type="joining_letter",
+        title=f"Joining Letter - {student.name}",
+        file_path=file_path,
+        verification_code=code,
+        created_by=created_by,
+    )
+    db.add(doc)
+    db.flush()
+    return doc
+
+
+def create_invoice_document(db: Session, student, created_by: int | None = None, due_date_override: date | None = None):
+    """Generates an invoice entirely from the student's current fee/payment state and adds
+    (but does not commit) the StudentDocument row. Returns None if the student has no fee
+    record yet. due_date_override lets the very first invoice (generated alongside the
+    joining letter) use a fixed "pay within N days" date instead of the next EMI's due date,
+    since there's often no EMI schedule yet at that point."""
+    from app.models.course import Course
+    from app.models.fee import FeeEmi, Payment, StudentFee
+    from app.models.student import StudentDocument
+
+    # This app's session is autoflush=False, so a Payment/StudentFee change the caller
+    # just made (e.g. recording a payment) would otherwise be invisible to the queries
+    # below unless flushed first.
+    db.flush()
+
+    course = db.get(Course, student.course_id) if student.course_id else None
+    fee = db.query(StudentFee).filter(StudentFee.student_id == student.id).first()
+    if not fee:
+        return None
+
+    last_payment = db.query(Payment).filter(Payment.student_id == student.id).order_by(Payment.payment_date.desc(), Payment.id.desc()).first()
+    next_emi = (
+        db.query(FeeEmi)
+        .filter(FeeEmi.student_fee_id == fee.id, FeeEmi.status != "paid")
+        .order_by(FeeEmi.due_date)
+        .first()
+    )
+
+    title = "Course Fee"
+    amount = float(fee.final_fee)
+    payment_made = float(fee.final_fee - fee.balance_fee)
+    due_date = due_date_override if due_date_override is not None else (next_emi.due_date if next_emi else None)
+    payment_date = last_payment.payment_date if last_payment else None
+    mode = last_payment.payment_mode.replace("_", " ").title() if last_payment else None
+
+    code = new_verification_code()
+    issue_date = date.today()
+    invoice_number = next_invoice_number(db)
+    file_path = generate_invoice(
+        db, student, course.name if course else "-", title, amount, due_date, issue_date,
+        invoice_number, payment_date, payment_made, mode, code,
+    )
+    doc = StudentDocument(
+        student_id=student.id,
+        document_type="invoice",
+        title=title,
+        file_path=file_path,
+        amount=amount,
+        due_date=due_date,
+        issue_date=issue_date,
+        invoice_number=invoice_number,
+        payment_date=payment_date,
+        payment_made=payment_made,
+        mode=mode,
+        verification_code=code,
+        created_by=created_by,
+    )
+    db.add(doc)
+    db.flush()
+    return doc
