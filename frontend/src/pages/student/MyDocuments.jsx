@@ -22,16 +22,17 @@ export default function MyDocuments() {
       <div className="card overflow-x-auto">
         <table className="data-table w-full">
           <thead>
-            <tr><th>Type</th><th>Title</th><th>Amount</th><th>Due Date</th><th>Issued</th><th></th></tr>
+            <tr><th>Type</th><th>Title</th><th>Invoice #</th><th>Amount</th><th>Due Date</th><th>Issued</th><th></th></tr>
           </thead>
           <tbody>
             {docs.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">No documents yet</td></tr>
+              <tr><td colSpan={7} className="text-center text-slate-400 py-6">No documents yet</td></tr>
             ) : (
               docs.map((d) => (
                 <tr key={d.id}>
                   <td><span className="badge bg-slate-200 text-slate-700">{DOC_TYPE_LABELS[d.document_type] || d.document_type}</span></td>
                   <td className="font-medium">{d.title}</td>
+                  <td>{d.invoice_number || "—"}</td>
                   <td>{d.amount != null ? `₹${Number(d.amount).toLocaleString()}` : "—"}</td>
                   <td>{d.due_date || "—"}</td>
                   <td>{d.issue_date}</td>

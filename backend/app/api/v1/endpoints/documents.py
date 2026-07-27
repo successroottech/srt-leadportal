@@ -13,7 +13,7 @@ from app.models.student import Student, StudentDocument
 from app.models.user import User
 from app.schemas.document import DocumentOut, InvoiceCreate
 from app.services.audit import log_action
-from app.services.documents import generate_invoice, generate_joining_letter, new_verification_code
+from app.services.documents import generate_invoice, generate_joining_letter, new_verification_code, next_invoice_number
 
 router = APIRouter()
 
@@ -55,9 +55,16 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db), user: 
     student = _get_student_or_404(db, payload.student_id)
     if payload.amount <= 0:
         raise HTTPException(status_code=422, detail="amount must be greater than 0")
+    if payload.payment_made < 0:
+        raise HTTPException(status_code=422, detail="payment_made cannot be negative")
+    course = db.get(Course, student.course_id) if student.course_id else None
     code = new_verification_code()
     issue_date = date.today()
-    file_path = generate_invoice(db, student, payload.title, payload.amount, payload.due_date, issue_date, code)
+    invoice_number = next_invoice_number(db)
+    file_path = generate_invoice(
+        db, student, course.name if course else "-", payload.title, payload.amount, payload.due_date, issue_date,
+        invoice_number, payload.payment_date, payload.payment_made, payload.mode, code,
+    )
     doc = StudentDocument(
         student_id=student.id,
         document_type="invoice",
@@ -66,6 +73,10 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db), user: 
         amount=payload.amount,
         due_date=payload.due_date,
         issue_date=issue_date,
+        invoice_number=invoice_number,
+        payment_date=payload.payment_date,
+        payment_made=payload.payment_made,
+        mode=payload.mode,
         verification_code=code,
         created_by=user.id,
     )

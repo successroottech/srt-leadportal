@@ -10,6 +10,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
 
@@ -17,9 +19,27 @@ from app.core.config import settings
 from app.models.settings import AppSettings
 from sqlalchemy.orm import Session
 
+# The base-14 PDF fonts (Helvetica/Times) don't include the Indian Rupee
+# glyph (U+20B9); DejaVu Sans does, so the invoice (which prints currency
+# amounts) uses it instead. Falls back to Helvetica if the font isn't
+# installed on the host, in which case amounts render with "Rs." instead.
+try:
+    pdfmetrics.registerFont(TTFont("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
+    pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
+    INV_FONT = "DejaVuSans"
+    INV_FONT_BOLD = "DejaVuSans-Bold"
+    RUPEE = "₹"
+except Exception:
+    INV_FONT = "Helvetica"
+    INV_FONT_BOLD = "Helvetica-Bold"
+    RUPEE = "Rs. "
+
 NAVY = HexColor("#1a2b57")
 GOLD = HexColor("#f2b705")
 SLATE = HexColor("#475569")
+INVOICE_BLUE = HexColor("#1d3fd6")
+RED = HexColor("#dc2626")
+LIGHT_GRAY = HexColor("#e5e7eb")
 
 SIGNATORY_NAME = "K Saranya"
 SIGNATORY_TITLE = "HR Manager"
@@ -27,10 +47,28 @@ CONTACT_PHONE = "+91 89390 69135"
 CONTACT_EMAIL = "hr@successroottech.com"
 CONTACT_WEBSITE = "www.successroottech.com"
 
+INVOICE_TERMS = [
+    "Placements depend on Interview Performance",
+    "Placement Location cannot be assured by the Institute.",
+    "Placements can only be given when there is a job vacancy for Freshers.",
+    "The job joining date will be confirmed by the Respective Companies.",
+    "Interviews will be scheduled after Full Payment of Training fees.",
+    "Placements are provided without any cost. Training fees are non-refundable.",
+]
+
 BODY_STYLE = ParagraphStyle("body", fontName="Helvetica", fontSize=10.5, leading=15, textColor=NAVY)
 BOLD_STYLE = ParagraphStyle("bold", parent=BODY_STYLE, fontName="Helvetica-Bold")
 HEADING_STYLE = ParagraphStyle("heading", parent=BODY_STYLE, fontName="Helvetica-Bold", fontSize=12.5, spaceBefore=2, spaceAfter=2)
 LIST_STYLE = ParagraphStyle("list", parent=BODY_STYLE, leftIndent=10, bulletIndent=0)
+
+INV_BODY_STYLE = ParagraphStyle("inv_body", fontName=INV_FONT, fontSize=10.5, leading=15, textColor=HexColor("#111827"))
+INV_BOLD_STYLE = ParagraphStyle("inv_bold", parent=INV_BODY_STYLE, fontName=INV_FONT_BOLD)
+INV_HEADING_STYLE = ParagraphStyle("inv_heading", parent=INV_BODY_STYLE, fontName=INV_FONT_BOLD, fontSize=12)
+INV_BULLET_STYLE = ParagraphStyle("inv_bullet", parent=INV_BODY_STYLE, fontSize=9.5, leftIndent=12, bulletIndent=0)
+
+
+def _fmt_amount(value: float) -> str:
+    return f"{RUPEE} {value:,.2f}" if RUPEE == "₹" else f"{RUPEE}{value:,.2f}"
 
 
 def new_verification_code() -> str:
@@ -109,6 +147,50 @@ def _draw_footer(c: canvas.Canvas, width: float) -> None:
     web_start = email_start + email_width + c.stringWidth("      ", "Helvetica", 8.5)
     web_width = c.stringWidth(CONTACT_WEBSITE, "Helvetica", 8.5)
     c.linkURL(f"https://{CONTACT_WEBSITE}", (web_start, y - 1, web_start + web_width, y + 7), relative=0)
+
+
+def next_invoice_number(db: Session) -> str:
+    from app.models.student import StudentDocument
+
+    year = date.today().year
+    count = db.query(StudentDocument).filter(StudentDocument.document_type == "invoice").count()
+    for _ in range(1000):
+        count += 1
+        candidate = f"SRT/{year}/{count:05d}"
+        exists = db.query(StudentDocument).filter(StudentDocument.invoice_number == candidate).first()
+        if not exists:
+            return candidate
+    raise RuntimeError("Could not generate a unique invoice number")
+
+
+def _draw_invoice_header(c: canvas.Canvas, org_name: str, tagline: str, logo_path: str | None, width: float, top_y: float) -> float:
+    logo = _logo_image_reader(logo_path)
+    logo_size = 15 * mm
+    gap = 3 * mm
+    wordmark_font_size = 16
+    wordmark_width = c.stringWidth(org_name.upper(), "Helvetica-Bold", wordmark_font_size)
+    block_width = (logo_size + gap if logo else 0) + wordmark_width
+    block_x = (width - block_width) / 2
+
+    text_x = block_x
+    if logo is not None:
+        c.drawImage(logo, block_x, top_y - logo_size, width=logo_size, height=logo_size, mask="auto")
+        text_x = block_x + logo_size + gap
+
+    c.setFillColor(HexColor("#111827"))
+    c.setFont("Helvetica-Bold", wordmark_font_size)
+    c.drawString(text_x, top_y - 8 * mm, org_name.upper())
+
+    c.setFillColor(INVOICE_BLUE)
+    c.setFont("Helvetica-Bold", 8)
+    c.drawCentredString(width / 2, top_y - 14 * mm, tagline.upper())
+
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(1.2)
+    c.line(width / 2 - 25 * mm, top_y - 16 * mm, width / 2 + 25 * mm, top_y - 16 * mm)
+
+    c.setFillColor(NAVY)
+    return top_y - 24 * mm
 
 
 def _draw_paragraph(c: canvas.Canvas, text: str, style: ParagraphStyle, x: float, y: float, max_width: float) -> float:
@@ -222,46 +304,131 @@ def generate_joining_letter(db: Session, student, course_name: str, verification
     return _save_pdf(buf)
 
 
-def generate_invoice(db: Session, student, title: str, amount: float, due_date, issue_date, verification_code: str) -> str:
+def generate_invoice(
+    db: Session, student, course_name: str, title: str, amount: float, due_date, issue_date,
+    invoice_number: str, payment_date, payment_made: float, mode: str | None, verification_code: str,
+) -> str:
     app_settings = db.get(AppSettings, 1)
     org_name = app_settings.organization_name if app_settings else "Success Root Technologies"
     logo_path = app_settings.logo_path if app_settings else None
+    org_address_lines = (app_settings.address or "Chennai").splitlines() if app_settings else ["Chennai"]
 
     buf = io.BytesIO()
     width, height = A4
     left = 20 * mm
+    right = width - 20 * mm
     content_width = width - 40 * mm
     c = canvas.Canvas(buf, pagesize=A4)
 
     _draw_watermark(c, width, height)
-    y = _draw_header(c, org_name, "From Basics to Brilliance", logo_path, width, height - 15 * mm)
+    y = _draw_invoice_header(c, org_name, "From Basics to Brilliance", logo_path, width, height - 15 * mm)
 
-    c.setFont("Helvetica-Bold", 13)
-    c.setFillColor(NAVY)
+    c.setFillColor(INVOICE_BLUE)
+    c.setFont(INV_FONT_BOLD, 26)
     c.drawCentredString(width / 2, y, "INVOICE")
     y -= 10 * mm
 
-    details = [
-        f"Invoice Date: {issue_date}",
-        f"Due Date: {due_date or '-'}",
-        "",
-        f"Billed To: {student.name} ({student.student_code})",
-        f"Mobile: {student.mobile}",
-        "",
-        f"Description: {title}",
-        f"Amount Due: Rs. {amount:,.2f}",
-    ]
-    c.setFont("Helvetica", 11)
-    for line in details:
-        c.drawString(left, y, line)
-        y -= 7 * mm
+    c.setFillColor(HexColor("#111827"))
+    c.setFont(INV_FONT, 11)
+    c.drawCentredString(width / 2, y, f"Invoice Date: {issue_date.strftime('%d %B %Y')}")
+    y -= 6 * mm
+    c.drawCentredString(width / 2, y, f"Invoice Number: {invoice_number}")
+    y -= 8 * mm
+
+    c.setStrokeColor(LIGHT_GRAY)
+    c.setLineWidth(0.7)
+    c.line(left, y, right, y)
+    y -= 8 * mm
+
+    c.setFont(INV_FONT_BOLD, 10.5)
+    c.drawString(left, y, f"Payment Date: {payment_date.strftime('%d/%m/%Y') if payment_date else '-'}")
+    c.drawRightString(right, y, f"Due Date : {due_date.strftime('%d/%m/%Y') if due_date else '-'}")
+    y -= 12 * mm
+
+    col2_x = width / 2 + 5 * mm
+    col_width = width / 2 - left - 5 * mm
+
+    y_left = _draw_paragraph(c, "<b>Invoice From:</b>", INV_BODY_STYLE, left, y, col_width)
+    y_left -= 4 * mm
+    y_left = _draw_paragraph(c, org_name, INV_BODY_STYLE, left, y_left, col_width)
+    for line in org_address_lines:
+        if line.strip():
+            y_left -= 4 * mm
+            y_left = _draw_paragraph(c, line.strip(), INV_BODY_STYLE, left, y_left, col_width)
+
+    y_right = _draw_paragraph(c, f"<b>Student Name</b>: {student.name}", INV_BODY_STYLE, col2_x, y, col_width)
+    y_right -= 4 * mm
+    y_right = _draw_paragraph(c, f"<b>Course</b>: <b>{course_name}</b>", INV_BODY_STYLE, col2_x, y_right, col_width)
+    y_right -= 4 * mm
+    y_right = _draw_paragraph(c, f"<b>Mode</b>: <b>{mode or '-'}</b>", INV_BODY_STYLE, col2_x, y_right, col_width)
+
+    y = min(y_left, y_right) - 10 * mm
+
+    col_x = [left, left + 12 * mm, left + 95 * mm, left + 120 * mm, right]
+    c.setStrokeColor(HexColor("#9ca3af"))
+    c.setLineWidth(0.7)
+    c.line(left, y + 4 * mm, right, y + 4 * mm)
+    c.setFont(INV_FONT_BOLD, 10)
+    c.setFillColor(HexColor("#111827"))
+    c.drawString(col_x[0], y, "#")
+    c.drawString(col_x[1], y, "ITEMS")
+    c.drawString(col_x[2], y, "QTY")
+    c.drawString(col_x[3], y, "RATE")
+    c.drawRightString(col_x[4], y, "AMOUNT")
+    y -= 4 * mm
+    c.line(left, y, right, y)
+    y -= 8 * mm
+
+    c.setFont(INV_FONT, 10.5)
+    c.drawString(col_x[0], y, "1")
+    c.drawString(col_x[1], y, title)
+    c.drawString(col_x[2], y, "1")
+    c.drawString(col_x[3], y, _fmt_amount(amount))
+    c.drawRightString(col_x[4], y, _fmt_amount(amount))
+    y -= 4 * mm
+    c.line(left, y, right, y)
+    y -= 10 * mm
+
+    balance_due = amount - (payment_made or 0)
+
+    c.setFont(INV_FONT, 10.5)
+    c.drawRightString(right - 30 * mm, y, "Subtotal (Including GST)")
+    c.drawRightString(right, y, _fmt_amount(amount))
+    y -= 7 * mm
+
+    c.setFont(INV_FONT_BOLD, 11)
+    c.drawRightString(right - 30 * mm, y, "TOTAL")
+    c.drawRightString(right, y, _fmt_amount(amount))
+    y -= 7 * mm
+
+    c.setFont(INV_FONT, 10.5)
+    c.drawRightString(right - 42 * mm, y, "Payment Made")
+    c.setFillColor(RED)
+    c.drawRightString(right - 30 * mm, y, "(-)")
+    c.setFillColor(HexColor("#111827"))
+    c.drawRightString(right, y, _fmt_amount(payment_made or 0))
+    y -= 8 * mm
+
+    c.setFillColor(LIGHT_GRAY)
+    c.rect(left, y - 2 * mm, content_width, 8 * mm, fill=1, stroke=0)
+    c.setFillColor(HexColor("#111827"))
+    c.setFont(INV_FONT_BOLD, 11)
+    c.drawRightString(right - 30 * mm, y, "Balance Due")
+    c.drawRightString(right, y, "NIL" if balance_due <= 0 else _fmt_amount(balance_due))
+    y -= 15 * mm
+
+    y = _draw_paragraph(c, "Terms &amp; Conditions", INV_HEADING_STYLE, left, y, content_width)
+    y -= 3 * mm
+    for term in INVOICE_TERMS:
+        y = _draw_paragraph(c, f"• {term}", INV_BULLET_STYLE, left, y, content_width)
+        y -= 2 * mm
 
     qr_img = _qr_image_reader(_verification_url(verification_code))
-    qr_size = 22 * mm
-    c.drawImage(qr_img, width - 20 * mm - qr_size, 22 * mm, width=qr_size, height=qr_size)
-    c.setFont("Helvetica", 6.5)
+    qr_size = 18 * mm
+    c.drawImage(qr_img, right - qr_size, 24 * mm, width=qr_size, height=qr_size)
+    c.setFont("Helvetica", 6)
     c.setFillColor(SLATE)
-    c.drawCentredString(width - 20 * mm - qr_size / 2, 19 * mm, "Scan to verify")
+    c.drawCentredString(right - qr_size / 2, 21 * mm, "Scan to verify")
 
     _draw_footer(c, width)
     c.showPage()

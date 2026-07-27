@@ -265,6 +265,10 @@ CREATE TABLE IF NOT EXISTS student_documents (
     amount              NUMERIC(12,2),
     due_date            DATE,
     issue_date          DATE NOT NULL DEFAULT CURRENT_DATE,
+    invoice_number      VARCHAR(30),
+    payment_date        DATE,
+    payment_made        NUMERIC(12,2),
+    mode                VARCHAR(30),
     verification_code   VARCHAR(40) UNIQUE NOT NULL,
     created_by          INTEGER REFERENCES users(id),
     uploaded_at         TIMESTAMPTZ NOT NULL DEFAULT now()

@@ -36,7 +36,7 @@ function DocumentsManager({ student }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [invoiceForm, setInvoiceForm] = useState({ title: "", amount: "", due_date: "" });
+  const [invoiceForm, setInvoiceForm] = useState({ title: "", amount: "", due_date: "", payment_date: "", payment_made: "", mode: "Online" });
   const [certTitle, setCertTitle] = useState("");
   const [certFile, setCertFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -81,8 +81,11 @@ function DocumentsManager({ student }) {
         title: invoiceForm.title,
         amount: Number(invoiceForm.amount),
         due_date: invoiceForm.due_date || null,
+        payment_date: invoiceForm.payment_date || null,
+        payment_made: invoiceForm.payment_made ? Number(invoiceForm.payment_made) : 0,
+        mode: invoiceForm.mode || null,
       });
-      setInvoiceForm({ title: "", amount: "", due_date: "" });
+      setInvoiceForm({ title: "", amount: "", due_date: "", payment_date: "", payment_made: "", mode: "Online" });
       await load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -139,6 +142,7 @@ function DocumentsManager({ student }) {
                 ) : (
                   d.title
                 )}
+                {d.invoice_number && <span className="ml-2 text-slate-400">{d.invoice_number}</span>}
                 {d.amount != null && <span className="ml-2 text-slate-500">₹{Number(d.amount).toLocaleString()}</span>}
                 {d.due_date && <span className="ml-2 text-slate-400">due {d.due_date}</span>}
               </span>
@@ -158,9 +162,18 @@ function DocumentsManager({ student }) {
         <form onSubmit={submitInvoice} className="space-y-2">
           <p className="label">Create Invoice</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input className="input" placeholder="Description" required value={invoiceForm.title} onChange={(e) => setInvoiceForm({ ...invoiceForm, title: e.target.value })} />
+            <input className="input" placeholder="Description (e.g. Course Fee)" required value={invoiceForm.title} onChange={(e) => setInvoiceForm({ ...invoiceForm, title: e.target.value })} />
             <input className="input" type="number" placeholder="Amount" required value={invoiceForm.amount} onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })} />
-            <input className="input" type="date" value={invoiceForm.due_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })} />
+            <select className="input" value={invoiceForm.mode} onChange={(e) => setInvoiceForm({ ...invoiceForm, mode: e.target.value })}>
+              <option value="Online">Online</option>
+              <option value="Offline">Offline</option>
+              <option value="Hybrid">Hybrid</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div><label className="label">Due Date</label><input className="input" type="date" value={invoiceForm.due_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })} /></div>
+            <div><label className="label">Payment Date</label><input className="input" type="date" value={invoiceForm.payment_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, payment_date: e.target.value })} /></div>
+            <div><label className="label">Payment Made</label><input className="input" type="number" placeholder="0" value={invoiceForm.payment_made} onChange={(e) => setInvoiceForm({ ...invoiceForm, payment_made: e.target.value })} /></div>
           </div>
           <button type="submit" className="btn-secondary">Create Invoice</button>
         </form>

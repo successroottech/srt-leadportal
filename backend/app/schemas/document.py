@@ -8,6 +8,9 @@ class InvoiceCreate(BaseModel):
     title: str
     amount: float
     due_date: date | None = None
+    payment_date: date | None = None
+    payment_made: float = 0
+    mode: str | None = None
 
 
 class DocumentOut(BaseModel):
@@ -20,6 +23,10 @@ class DocumentOut(BaseModel):
     amount: float | None
     due_date: date | None
     issue_date: date
+    invoice_number: str | None
+    payment_date: date | None
+    payment_made: float | None
+    mode: str | None
     verification_code: str
     uploaded_at: datetime
 
