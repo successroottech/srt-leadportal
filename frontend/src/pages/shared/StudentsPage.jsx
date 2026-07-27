@@ -35,9 +35,8 @@ function DocumentsManager({ student }) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [generating, setGenerating] = useState(false);
-  const [invoiceForm, setInvoiceForm] = useState({ title: "", amount: "", due_date: "", payment_date: "", payment_made: "", mode: "Online" });
-  const [certTitle, setCertTitle] = useState("");
+  const [generatingLetter, setGeneratingLetter] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const [certFile, setCertFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
@@ -60,7 +59,7 @@ function DocumentsManager({ student }) {
   }, []);
 
   async function generateJoiningLetter() {
-    setGenerating(true);
+    setGeneratingLetter(true);
     setError("");
     try {
       await api.post(`/documents/joining-letter/${student.id}`);
@@ -68,27 +67,20 @@ function DocumentsManager({ student }) {
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
-      setGenerating(false);
+      setGeneratingLetter(false);
     }
   }
 
-  async function submitInvoice(e) {
-    e.preventDefault();
+  async function generateInvoice() {
+    setGeneratingInvoice(true);
     setError("");
     try {
-      await api.post("/documents/invoices", {
-        student_id: student.id,
-        title: invoiceForm.title,
-        amount: Number(invoiceForm.amount),
-        due_date: invoiceForm.due_date || null,
-        payment_date: invoiceForm.payment_date || null,
-        payment_made: invoiceForm.payment_made ? Number(invoiceForm.payment_made) : 0,
-        mode: invoiceForm.mode || null,
-      });
-      setInvoiceForm({ title: "", amount: "", due_date: "", payment_date: "", payment_made: "", mode: "Online" });
+      await api.post(`/documents/invoices/${student.id}`);
       await load();
     } catch (err) {
       setError(apiErrorMessage(err));
+    } finally {
+      setGeneratingInvoice(false);
     }
   }
 
@@ -100,10 +92,8 @@ function DocumentsManager({ student }) {
     try {
       const formData = new FormData();
       formData.append("student_id", student.id);
-      formData.append("title", certTitle);
       formData.append("file", certFile);
       await api.post("/documents/certificates", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      setCertTitle("");
       setCertFile(null);
       await load();
     } catch (err) {
@@ -121,6 +111,12 @@ function DocumentsManager({ student }) {
     } catch (err) {
       setError(apiErrorMessage(err));
     }
+  }
+
+  function shareDoc(d) {
+    const link = `${window.location.origin}${d.file_path}`;
+    const message = `Hi ${student.name}, here is your ${DOC_TYPE_LABELS[d.document_type] || d.document_type}: ${link}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noreferrer");
   }
 
   return (
@@ -146,44 +142,33 @@ function DocumentsManager({ student }) {
                 {d.amount != null && <span className="ml-2 text-slate-500">₹{Number(d.amount).toLocaleString()}</span>}
                 {d.due_date && <span className="ml-2 text-slate-400">due {d.due_date}</span>}
               </span>
-              <button className="text-red-600 hover:underline text-xs font-medium" onClick={() => removeDoc(d.id)}>Delete</button>
+              <span className="space-x-2 flex-shrink-0">
+                {d.file_path && (
+                  <button className="text-emerald-700 hover:underline text-xs font-medium" onClick={() => shareDoc(d)}>Share</button>
+                )}
+                <button className="text-red-600 hover:underline text-xs font-medium" onClick={() => removeDoc(d.id)}>Delete</button>
+              </span>
             </div>
           ))}
         </div>
       )}
 
       <div className="border-t border-slate-200 pt-3 space-y-4">
-        <div>
-          <button className="btn-secondary" onClick={generateJoiningLetter} disabled={generating}>
-            {generating ? "Generating..." : "Generate Joining Letter"}
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-secondary" onClick={generateJoiningLetter} disabled={generatingLetter}>
+            {generatingLetter ? "Generating..." : "Generate Joining Letter"}
+          </button>
+          <button className="btn-secondary" onClick={generateInvoice} disabled={generatingInvoice}>
+            {generatingInvoice ? "Generating..." : "Generate Invoice"}
           </button>
         </div>
-
-        <form onSubmit={submitInvoice} className="space-y-2">
-          <p className="label">Create Invoice</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input className="input" placeholder="Description (e.g. Course Fee)" required value={invoiceForm.title} onChange={(e) => setInvoiceForm({ ...invoiceForm, title: e.target.value })} />
-            <input className="input" type="number" placeholder="Amount" required value={invoiceForm.amount} onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })} />
-            <select className="input" value={invoiceForm.mode} onChange={(e) => setInvoiceForm({ ...invoiceForm, mode: e.target.value })}>
-              <option value="Online">Online</option>
-              <option value="Offline">Offline</option>
-              <option value="Hybrid">Hybrid</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div><label className="label">Due Date</label><input className="input" type="date" value={invoiceForm.due_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })} /></div>
-            <div><label className="label">Payment Date</label><input className="input" type="date" value={invoiceForm.payment_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, payment_date: e.target.value })} /></div>
-            <div><label className="label">Payment Made</label><input className="input" type="number" placeholder="0" value={invoiceForm.payment_made} onChange={(e) => setInvoiceForm({ ...invoiceForm, payment_made: e.target.value })} /></div>
-          </div>
-          <button type="submit" className="btn-secondary">Create Invoice</button>
-        </form>
+        <p className="text-xs text-slate-400 -mt-2">
+          The invoice is generated automatically from this student's fee and payment records — total, amount paid to date, and the next due date always reflect the current balance.
+        </p>
 
         <form onSubmit={submitCertificate} className="space-y-2">
           <p className="label">Upload Certificate</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input className="input" placeholder="Title (e.g. Course Completion Certificate)" required value={certTitle} onChange={(e) => setCertTitle(e.target.value)} />
-            <input className="input" type="file" accept=".pdf,.jpg,.jpeg,.png" required onChange={(e) => setCertFile(e.target.files?.[0] || null)} />
-          </div>
+          <input className="input" type="file" accept=".pdf,.jpg,.jpeg,.png" required onChange={(e) => setCertFile(e.target.files?.[0] || null)} />
           <button type="submit" className="btn-secondary" disabled={uploading}>{uploading ? "Uploading..." : "Upload Certificate"}</button>
         </form>
       </div>

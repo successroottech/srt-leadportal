@@ -3,16 +3,6 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
 
 
-class InvoiceCreate(BaseModel):
-    student_id: int
-    title: str
-    amount: float
-    due_date: date | None = None
-    payment_date: date | None = None
-    payment_made: float = 0
-    mode: str | None = None
-
-
 class DocumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
