@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import PublicRegister from "./pages/PublicRegister";
+import VerifyDocument from "./pages/VerifyDocument";
 
 import AdminDashboard from "./pages/admin/Dashboard";
 import Roles from "./pages/admin/Roles";
@@ -34,6 +35,7 @@ import StudentDashboard from "./pages/student/Dashboard";
 import MyCourse from "./pages/student/MyCourse";
 import MyAttendance from "./pages/student/MyAttendance";
 import MyFees from "./pages/student/MyFees";
+import MyDocuments from "./pages/student/MyDocuments";
 import MyFeedback from "./pages/student/MyFeedback";
 
 import LeadsPage from "./pages/shared/LeadsPage";
@@ -58,6 +60,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<PublicRegister />} />
+          <Route path="/verify/:code" element={<VerifyDocument />} />
           <Route path="/" element={<RoleHome />} />
 
           <Route element={<ProtectedRoute roles={["admin"]} />}>
@@ -132,6 +135,7 @@ export default function App() {
               <Route path="/student/course" element={<MyCourse />} />
               <Route path="/student/attendance" element={<MyAttendance />} />
               <Route path="/student/fees" element={<MyFees />} />
+              <Route path="/student/documents" element={<MyDocuments />} />
               <Route path="/student/leave" element={<StaffLeaveSelf studentMode />} />
               <Route path="/student/feedback" element={<MyFeedback />} />
               <Route path="/student/notifications" element={<NotificationsPage />} />

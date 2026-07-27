@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     UPLOAD_DIR: str = "uploads"
+    PUBLIC_BASE_URL: str = "https://portal.successroottech.com"
 
     SESSION_TIMEOUT_MINUTES: int = 60
     MAX_LOGIN_ATTEMPTS: int = 5

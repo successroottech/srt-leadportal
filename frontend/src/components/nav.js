@@ -58,6 +58,7 @@ export const NAV_BY_ROLE = {
     { to: "/student/course", label: "My Course" },
     { to: "/student/attendance", label: "Attendance" },
     { to: "/student/fees", label: "Fee Details" },
+    { to: "/student/documents", label: "My Documents" },
     { to: "/student/leave", label: "Leave" },
     { to: "/student/feedback", label: "Feedback & Complaints" },
     { to: "/student/notifications", label: "Notifications" },

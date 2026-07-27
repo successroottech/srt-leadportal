@@ -257,12 +257,20 @@ CREATE TABLE IF NOT EXISTS student_batch_history (
 );
 
 CREATE TABLE IF NOT EXISTS student_documents (
-    id              SERIAL PRIMARY KEY,
-    student_id      INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    document_type   VARCHAR(100) NOT NULL,
-    file_path       VARCHAR(255) NOT NULL,
-    uploaded_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                  SERIAL PRIMARY KEY,
+    student_id          INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    document_type       VARCHAR(100) NOT NULL CHECK (document_type IN ('joining_letter','invoice','certificate')),
+    title               VARCHAR(150) NOT NULL DEFAULT '',
+    file_path           VARCHAR(255) NOT NULL,
+    amount              NUMERIC(12,2),
+    due_date            DATE,
+    issue_date          DATE NOT NULL DEFAULT CURRENT_DATE,
+    verification_code   VARCHAR(40) UNIQUE NOT NULL,
+    created_by          INTEGER REFERENCES users(id),
+    uploaded_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS idx_student_documents_student ON student_documents(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_documents_code ON student_documents(verification_code);
 
 -- =====================================================================
 -- 6. FEES / EMI / PAYMENTS

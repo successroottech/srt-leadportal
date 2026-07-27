@@ -25,6 +25,159 @@ function feeBadge(status) {
   return <span className={`badge ${meta.color}`}>{meta.label}</span>;
 }
 
+const DOC_TYPE_LABELS = {
+  joining_letter: "Joining Letter",
+  invoice: "Invoice",
+  certificate: "Certificate",
+};
+
+function DocumentsManager({ student }) {
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({ title: "", amount: "", due_date: "" });
+  const [certTitle, setCertTitle] = useState("");
+  const [certFile, setCertFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.get(`/documents/student/${student.id}`);
+      setDocs(data);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function generateJoiningLetter() {
+    setGenerating(true);
+    setError("");
+    try {
+      await api.post(`/documents/joining-letter/${student.id}`);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function submitInvoice(e) {
+    e.preventDefault();
+    setError("");
+    try {
+      await api.post("/documents/invoices", {
+        student_id: student.id,
+        title: invoiceForm.title,
+        amount: Number(invoiceForm.amount),
+        due_date: invoiceForm.due_date || null,
+      });
+      setInvoiceForm({ title: "", amount: "", due_date: "" });
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    }
+  }
+
+  async function submitCertificate(e) {
+    e.preventDefault();
+    if (!certFile) return;
+    setUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("student_id", student.id);
+      formData.append("title", certTitle);
+      formData.append("file", certFile);
+      await api.post("/documents/certificates", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      setCertTitle("");
+      setCertFile(null);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removeDoc(id) {
+    if (!window.confirm("Delete this document?")) return;
+    try {
+      await api.delete(`/documents/${id}`);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    }
+  }
+
+  return (
+    <div>
+      {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading...</p>
+      ) : docs.length === 0 ? (
+        <p className="text-sm text-slate-400 mb-3">No documents yet.</p>
+      ) : (
+        <div className="space-y-1 mb-4 max-h-48 overflow-y-auto">
+          {docs.map((d) => (
+            <div key={d.id} className="flex items-center justify-between text-sm bg-slate-50 rounded px-2 py-1.5">
+              <span>
+                <span className="badge bg-slate-200 text-slate-700 mr-2">{DOC_TYPE_LABELS[d.document_type] || d.document_type}</span>
+                {d.file_path ? (
+                  <a href={d.file_path} target="_blank" rel="noreferrer" className="text-navy-700 hover:underline">{d.title}</a>
+                ) : (
+                  d.title
+                )}
+                {d.amount != null && <span className="ml-2 text-slate-500">₹{Number(d.amount).toLocaleString()}</span>}
+                {d.due_date && <span className="ml-2 text-slate-400">due {d.due_date}</span>}
+              </span>
+              <button className="text-red-600 hover:underline text-xs font-medium" onClick={() => removeDoc(d.id)}>Delete</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="border-t border-slate-200 pt-3 space-y-4">
+        <div>
+          <button className="btn-secondary" onClick={generateJoiningLetter} disabled={generating}>
+            {generating ? "Generating..." : "Generate Joining Letter"}
+          </button>
+        </div>
+
+        <form onSubmit={submitInvoice} className="space-y-2">
+          <p className="label">Create Invoice</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input className="input" placeholder="Description" required value={invoiceForm.title} onChange={(e) => setInvoiceForm({ ...invoiceForm, title: e.target.value })} />
+            <input className="input" type="number" placeholder="Amount" required value={invoiceForm.amount} onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })} />
+            <input className="input" type="date" value={invoiceForm.due_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })} />
+          </div>
+          <button type="submit" className="btn-secondary">Create Invoice</button>
+        </form>
+
+        <form onSubmit={submitCertificate} className="space-y-2">
+          <p className="label">Upload Certificate</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input className="input" placeholder="Title (e.g. Course Completion Certificate)" required value={certTitle} onChange={(e) => setCertTitle(e.target.value)} />
+            <input className="input" type="file" accept=".pdf,.jpg,.jpeg,.png" required onChange={(e) => setCertFile(e.target.files?.[0] || null)} />
+          </div>
+          <button type="submit" className="btn-secondary" disabled={uploading}>{uploading ? "Uploading..." : "Upload Certificate"}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function StudentsPage() {
   const [rows, setRows] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -43,6 +196,7 @@ export default function StudentsPage() {
   const [editRow, setEditRow] = useState(null);
   const [editForm, setEditForm] = useState({});
 
+  const [docsRow, setDocsRow] = useState(null);
   const [feesRow, setFeesRow] = useState(null);
   const [feeSummary, setFeeSummary] = useState(null);
   const [feeEmis, setFeeEmis] = useState([]);
@@ -272,6 +426,9 @@ export default function StudentsPage() {
                       <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => { setTransferRow(s); setTransferBatch(""); }}>
                         Transfer Batch
                       </button>
+                      <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => setDocsRow(s)}>
+                        Documents
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -300,6 +457,9 @@ export default function StudentsPage() {
                   </button>
                   <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => { setTransferRow(s); setTransferBatch(""); }}>
                     Transfer Batch
+                  </button>
+                  <button className="text-navy-700 hover:underline text-xs font-medium" onClick={() => setDocsRow(s)}>
+                    Documents
                   </button>
                 </div>
               </div>
@@ -471,6 +631,10 @@ export default function StudentsPage() {
           <div><label className="label">Remarks</label><textarea className="input" rows={2} value={payForm.remarks} onChange={(e) => setPayForm({ ...payForm, remarks: e.target.value })} /></div>
           <div className="flex justify-end gap-2"><button type="button" className="btn-secondary" onClick={() => setPayEmi(null)}>Cancel</button><button type="submit" className="btn-primary">Save Payment</button></div>
         </form>
+      </Modal>
+
+      <Modal open={!!docsRow} title={`Documents: ${docsRow?.name || ""}`} onClose={() => setDocsRow(null)} wide>
+        {docsRow && <DocumentsManager student={docsRow} />}
       </Modal>
     </div>
   );

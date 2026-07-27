@@ -13,3 +13,6 @@ python-multipart==0.0.9
 python-dotenv==1.0.1
 email-validator==2.2.0
 python-dateutil==2.9.0.post0
+reportlab==5.0.0
+qrcode==8.2
+pillow==12.3.0

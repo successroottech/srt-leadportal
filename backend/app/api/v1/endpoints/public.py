@@ -12,8 +12,9 @@ from app.db.session import get_db
 from app.models.course import Course
 from app.models.fee import Payment
 from app.models.role import Role
-from app.models.student import Student
+from app.models.student import Student, StudentDocument
 from app.models.user import User
+from app.schemas.document import VerificationOut
 from app.services.codegen import next_code
 from app.services.fees import create_student_fee_record
 
@@ -150,3 +151,19 @@ async def public_register(
         "student_code": student.student_code,
         "detail": "Registration received! Your student login has been created — sign in with your mobile number and the default password Welcome@123, then set a new password.",
     }
+
+
+@router.get("/verify/{code}", response_model=VerificationOut)
+def verify_document(code: str, db: Session = Depends(get_db)):
+    doc = db.query(StudentDocument).filter(StudentDocument.verification_code == code).first()
+    if not doc:
+        return VerificationOut(valid=False)
+    student = db.get(Student, doc.student_id)
+    return VerificationOut(
+        valid=True,
+        document_type=doc.document_type,
+        title=doc.title,
+        student_name=student.name if student else None,
+        student_code=student.student_code if student else None,
+        issue_date=doc.issue_date,
+    )
